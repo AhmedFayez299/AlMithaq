@@ -1,0 +1,22 @@
+using AlMithaq.Core.Logic;
+using AlMithaq.Features.Quran.Services;
+int passed=0;
+void Check(bool ok,string name){if(!ok)throw new Exception(name);passed++;Console.WriteLine("PASS: "+name);}
+var today=DateOnly.FromDateTime(DateTime.Today);
+var manual=new DailyWird(50,5);
+DailyWirdStore.Save(manual);var saved=Preferences.Get("quran.daily-wird.v1","");
+KhatmahStore.Save(new(1,1,today,today.AddDays(29)));KhatmahStore.SetLinked(true);
+Check(DailyWirdStore.Load()==new DailyWird(1,21),"Linked home wird derives the current khatmah assignment");
+Check(DailyWirdStore.Complete() && KhatmahStore.Load()!.NextPage==22 && !DailyWirdStore.Complete(),"Completing the home wird advances khatmah exactly once");
+Check(DailyWirdStore.ForReminders()!.IsComplete(today),"Completing a linked assignment suppresses its reminders today");
+KhatmahStore.SetLinked(false);
+Check(DailyWirdStore.Load()==manual && Preferences.Get("quran.daily-wird.v1","")==saved,"Unlinking restores the exact independent wird without overwriting its data");
+KhatmahStore.Save(new(602,605,today.AddDays(-1),today.AddDays(-1),today.AddDays(-1),602,604));KhatmahStore.SetLinked(true);
+Check(DailyWirdStore.ForReminders() is null && DailyWirdStore.Load() is null,"A finished linked plan schedules no fresh daily wird on following days");
+var memory=new MemorizationPlan(Guid.NewGuid().ToString(),1,1,3,today,today);
+MemorizationStore.Save(memory);MemorizationStore.Save(memory.Review(today,ReviewRating.Good));
+Check(MemorizationStore.Load().Count==1 && MemorizationStore.Load()[0].NextReviewOn==today.AddDays(1),"Review state survives JSON persistence without duplicate entries");
+MemorizationStore.Remove(memory.Id);Check(MemorizationStore.Load().Count==0,"Removing a memorization range preserves a valid empty store");
+Preferences.Set("quran.khatmah.v1","{bad-json");
+Check(!KhatmahStore.Linked && DailyWirdStore.Load()==manual,"Malformed plan data does not prevent access to the preserved independent wird");
+Console.WriteLine($"ALL {passed} STORE CHECKS PASSED");

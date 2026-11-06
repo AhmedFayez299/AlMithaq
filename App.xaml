@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Application xmlns="http://schemas.microsoft.com/dotnet/2021/maui" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml" x:Class="AlMithaq.App">
+ <Application.Resources><ResourceDictionary>
+  <Style TargetType="Label"><Setter Property="FontFamily" Value="Almarai-Regular"/><Setter Property="TextColor" Value="{DynamicResource AppInk}"/></Style>
+  <Style TargetType="Entry"><Setter Property="TextColor" Value="{DynamicResource AppInk}"/><Setter Property="PlaceholderColor" Value="{DynamicResource AppMuted}"/></Style>
+  <Style TargetType="Picker"><Setter Property="TextColor" Value="{DynamicResource AppInk}"/><Setter Property="TitleColor" Value="{DynamicResource AppMuted}"/></Style>
+  <Style TargetType="SearchBar"><Setter Property="TextColor" Value="{DynamicResource AppInk}"/><Setter Property="PlaceholderColor" Value="{DynamicResource AppMuted}"/></Style>
+ </ResourceDictionary></Application.Resources>
+</Application>

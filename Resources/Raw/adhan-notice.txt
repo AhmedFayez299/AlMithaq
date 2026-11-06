@@ -1,0 +1,22 @@
+AlMithaq — user-supplied adhan recordings / ملفات الأذان المقدّمة للمشروع
+
+1. Ali bin Ahmad Mulla / علي بن أحمد ملا — الحرم المكي
+Input supplied by project owner: a4ab138564ce.mp3
+Bundled file: adhan_ali_mulla.mp3
+Original MP3 retained byte-for-byte; already 16 kbps mono, 16 kHz.
+Size: 409,088 bytes. Duration approximately 3:24.
+Identification supplied by project owner; embedded artist text is unreadable.
+
+2. Ahmed Al-Haddad / أحمد الحداد
+Input supplied by project owner: f30b7631d625.mp3
+Embedded artist: Ahmed Al-Haddad.
+Original metadata references www.assabile.com and www.islamweb.net.
+Bundled file: adhan_haddad.m4a
+Changes: complete audio retained, cover art removed, loudness normalized;
+mono AAC, 24 kHz, 40 kbps. Size: 791,829 bytes. Duration approximately 2:34.
+
+Combined bundled size: 1,200,917 bytes.
+No network or account required for playback.
+These replace the earlier Creative Commons recordings. No CC license is asserted
+for the newly supplied recordings; copyright remains with the respective owners.
+Prepared 2026-11-04 from the project owner's supplied local files.

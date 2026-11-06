@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><NuGetAudit>false</NuGetAudit></PropertyGroup><ItemGroup>
+<Compile Include="../../Core/Logic/KhatmahPlan.cs" Link="KhatmahPlan.cs"/>
+<Compile Include="../../Core/Logic/DailyWird.cs" Link="DailyWird.cs"/>
+<Compile Include="../../Core/Logic/MemorizationPlan.cs" Link="MemorizationPlan.cs"/>
+<Compile Include="../../Features/Quran/Services/QuranPlansStore.cs" Link="QuranPlansStore.cs"/>
+<Compile Include="../../Features/Quran/Services/DailyWirdStore.cs" Link="DailyWirdStore.cs"/>
+</ItemGroup></Project>
