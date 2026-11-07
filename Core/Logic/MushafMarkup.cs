@@ -115,12 +115,12 @@ public static class MushafMarkup
         body[data-frame="3"] .leaf:before{content:'';position:absolute;top:25px;right:5px;bottom:24px;left:5px;pointer-events:none;border:8px solid #547f83;outline:1px solid #a48c56;outline-offset:-1px;border-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 36 36'%3E%3Cdefs%3E%3Cpattern id='p' width='12' height='12' patternUnits='userSpaceOnUse'%3E%3Crect width='12' height='12' fill='%231b505b'/%3E%3Cpath d='M0 6Q3 6 6 1Q9 6 12 6Q9 6 6 11Q3 6 0 6Z M0 1Q3 1 3 4M12 11Q9 11 9 8' fill='none' stroke='%23c5ad76' stroke-width='.8'/%3E%3Ccircle cx='6' cy='6' r='1.4' fill='%237ebfc1'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='36' height='36' fill='url(%23p)'/%3E%3C/svg%3E") 12 round}
         body[data-frame="3"] .leaf[data-opening="true"]:before{outline:2px double #c5ad76;box-shadow:inset 0 0 0 2px #48767b,inset 0 0 0 4px #ad9259}
         body[data-frame="3"][data-theme="2"] .leaf:before{outline-color:#c9af73}
+        [id$="_alm_art"]{fill:var(--ink)}svg path:not(.ayahPolygon){pointer-events:none}
         .leaf{--gutter-edge:rgba(39,27,15,.19);--gutter-mid:rgba(39,27,15,.06);--gutter-soft:rgba(39,27,15,.025)}
         body[data-theme="2"] .leaf{--gutter-edge:#374b41;--gutter-mid:#20342b;--gutter-soft:rgba(73,99,85,.08)}
         .leaf:after{content:'';position:absolute;top:0;bottom:0;width:28px;pointer-events:none}
         .leaf[data-binding="right"]:after{right:0;background:linear-gradient(to left,var(--gutter-edge),var(--gutter-mid) 22%,var(--gutter-soft) 65%,transparent)}
         .leaf[data-binding="left"]:after{left:0;background:linear-gradient(to right,var(--gutter-edge),var(--gutter-mid) 22%,var(--gutter-soft) 65%,transparent)}
-        [id$="_alm_art"]{fill:var(--ink)}svg path:not(.ayahPolygon){pointer-events:none}
         body[data-theme="2"] svg [fill="#231f20"],body[data-theme="2"] svg [fill="#000000"],body[data-theme="2"] svg [fill="#000"],body[data-theme="2"] svg [fill="black"]{fill:var(--ink)}
         .ayahPolygon{fill:#c6a45c;fill-opacity:0;pointer-events:all;transition:fill-opacity 180ms ease}.ayahPolygon.selected{fill-opacity:.16}
         </style></head><body data-theme="{{{theme}}}" data-frame="{{{frameStyle}}}"><main id="deck"><article class="leaf" id="previous">{{{previous}}}</article><article class="leaf" id="current">{{{current}}}</article><article class="leaf" id="next">{{{next}}}</article></main>

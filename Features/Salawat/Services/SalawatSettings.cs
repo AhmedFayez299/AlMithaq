@@ -1,4 +1,4 @@
-﻿using AlMithaq.Core.Logic;
+using AlMithaq.Core.Logic;
 using AlMithaq.Features.Quran.Services;
 
 namespace AlMithaq.Features.Salawat.Services;
@@ -23,6 +23,8 @@ public static class SalawatCoordinator
 #if ANDROID
         try { Platforms.Android.SalawatScheduler.Refresh(); }
         catch (Exception ex) { System.Diagnostics.Debug.WriteLine(ex); Preferences.Set("salawat.error", "تعذر جدولة التذكير؛ راجع أوقات التذكير والأذونات."); }
+#elif IOS
+        _ = Platforms.iOS.LocalReminders.RefreshAsync();
 #endif
     }
     public static async Task EnableAsync()
@@ -58,24 +60,32 @@ public static class SalawatCoordinator
     {
 #if ANDROID
         Platforms.Android.SalawatScheduler.Preview();
+#elif IOS
+        Platforms.iOS.ReminderAudio.Play("salawat_reminder", "m4a", SalawatSettings.Volume);
 #endif
     }
     public static void StopPreview()
     {
 #if ANDROID
         Platforms.Android.SalawatScheduler.StopPreview();
+#elif IOS
+        Platforms.iOS.ReminderAudio.Stop();
 #endif
     }
     public static void UpdateVolume()
     {
 #if ANDROID
         Platforms.Android.SalawatPlaybackService.UpdateVolume();
+#elif IOS
+        Platforms.iOS.ReminderAudio.SetVolume(SalawatSettings.Volume);
 #endif
     }
     public static void Test()
     {
 #if ANDROID
         Platforms.Android.SalawatScheduler.Test();
+#elif IOS
+        _ = Platforms.iOS.LocalReminders.TestAsync("salawat", "اختبار تذكير الصلاة على النبي", SalawatSettings.Sound);
 #endif
     }
 }

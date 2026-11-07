@@ -359,9 +359,6 @@ public partial class QuranPage : ContentPage
         ClosePlaybackSheet();
         HideVerseBar(); _settingsSheet.Hide();
         DeviceDisplay.Current.KeepScreenOn = false;
-#if ANDROID
-        AlMithaq.Platforms.Android.ReaderPresentation.SetImmersive(false);
-#endif
         _active = false; StopPlayback("reader disappeared"); _mushaf.CancelPending(); _lifetime?.Cancel(); _searchCancellation?.Cancel(); _download?.Cancel(); base.OnDisappearing();
     }
     private async Task GuardAsync(Func<Task> action)
@@ -480,10 +477,8 @@ public partial class QuranPage : ContentPage
         _readerTop.IsVisible = visible; _readerBottom.IsVisible = visible;
         _volumePopup.IsVisible = false;
         if (!visible) { _settingsSheet.Hide(); _search.Unfocus(); }
+
         NavigationPage.SetHasNavigationBar(this, visible || !_readerOpen);
-#if ANDROID
-        AlMithaq.Platforms.Android.ReaderPresentation.SetImmersive(_readerOpen && !visible);
-#endif
     }
 
     private async Task SearchAsync(string query)

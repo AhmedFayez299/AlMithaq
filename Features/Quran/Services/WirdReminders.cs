@@ -8,6 +8,8 @@ public static class WirdReminders
 #if ANDROID
         try { Platforms.Android.WirdReminderScheduler.Refresh(); }
         catch (Exception ex) { System.Diagnostics.Debug.WriteLine(ex); }
+#elif IOS
+        _ = Platforms.iOS.LocalReminders.RefreshAsync();
 #endif
     }
     public static async Task<bool> RequestPermissionAsync()
@@ -15,8 +17,12 @@ public static class WirdReminders
 #if ANDROID
         if (OperatingSystem.IsAndroidVersionAtLeast(33))
             return await Permissions.RequestAsync<PrayerTimes.Services.AdhanNotificationPermission>() == PermissionStatus.Granted;
+#elif IOS
+        return await Platforms.iOS.LocalReminders.RequestPermissionAsync();
 #endif
+#if !IOS
         await Task.CompletedTask; return true;
+#endif
     }
     public static string Status
     {

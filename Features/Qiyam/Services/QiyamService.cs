@@ -45,6 +45,8 @@ public static class QiyamCoordinator
 #if ANDROID
         try { Platforms.Android.QiyamScheduler.Refresh(); }
         catch (Exception ex) { System.Diagnostics.Debug.WriteLine(ex); }
+#elif IOS
+        _ = Platforms.iOS.LocalReminders.RefreshAsync();
 #endif
     }
     public static async Task<bool> EnableAsync()
@@ -56,6 +58,8 @@ public static class QiyamCoordinator
     {
 #if ANDROID
         Platforms.Android.QiyamScheduler.Test();
+#elif IOS
+        _ = Platforms.iOS.LocalReminders.TestAsync("qiyam", "اختبار تذكير قيام الليل");
 #endif
     }
 }

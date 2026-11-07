@@ -1,4 +1,4 @@
-﻿namespace AlMithaq;
+namespace AlMithaq;
 public partial class App : Application
 {
     private readonly IServiceProvider _services;
@@ -19,6 +19,9 @@ public partial class App : Application
         var window = new Window(launch);
         window.Stopped += (_, _) => launch.Suspend();
         window.Resumed += (_, _) => launch.Resume();
+#if IOS
+        window.Activated += (_, _) => _ = Platforms.iOS.LocalReminders.RefreshAsync();
+#endif
         window.Destroying += (_, _) => { launch.Suspend(); scope.Dispose(); };
         return window;
     }

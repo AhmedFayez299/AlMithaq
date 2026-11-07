@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<TargetFrameworks>net10.0-android</TargetFrameworks>
@@ -71,6 +71,8 @@
 	  <ApplicationId>com.companyname.almithaq</ApplicationId>
 	  <ApplicationVersion>9</ApplicationVersion>
 	  <AndroidPackageFormats>aab;apk</AndroidPackageFormats>
+	  <AndroidLinkTool>r8</AndroidLinkTool>
+	  <AndroidR8ObfuscationMode>private-members</AndroidR8ObfuscationMode>
       <AndroidBundleConfigurationFile>Properties\AndroidBundleConfig.json</AndroidBundleConfigurationFile>
 	</PropertyGroup>
 
@@ -126,7 +128,9 @@
         <MauiFont Remove="Resources\Fonts\OpenSans-Semibold.ttf;Resources\Fonts\Font Awesome 6 Brands-Regular-400.otf;Resources\Fonts\Font Awesome 6 Free-Regular-400.otf" />
 
 		<!-- Raw Assets (also remove the "Resources\Raw" prefix) -->
-		<MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
+		<BundleResource Include="Platforms/Android/Resources/raw/adhan_ali_mulla.mp3;Platforms/Android/Resources/raw/adhan_haddad.m4a;Platforms/Android/Resources/raw/salawat_reminder.m4a" LogicalName="%(Filename)%(Extension)" Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'" />
+        <BundleResource Include="Platforms/iOS/Resources/*_notice.caf" LogicalName="%(Filename)%(Extension)" Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'" />
+        <MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
         <MauiAsset Remove="Resources\Raw\mushaf\pages\**" />
 	</ItemGroup>
 
