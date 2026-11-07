@@ -49,7 +49,13 @@ public partial class HomePage : ContentPage
         var headerBackdrop = new HeaderBackdrop(); Grid.SetColumnSpan(headerBackdrop, 3); heading.Add(headerBackdrop);
         heading.Add(brand, 1);
         heading.Add(Ui.ThemeToggle(), 0);
-        var menuButton = Ui.Icon("\uf0c9", "فتح القائمة الرئيسية", () => { if (Window?.Page is FlyoutPage flyout) flyout.IsPresented = true; return Task.CompletedTask; }); menuButton.TextColor = Colors.White; menuButton.VerticalOptions = LayoutOptions.Center; heading.Add(menuButton, 2);
+        var menuButton = Ui.Icon("\uf0c9", "فتح القائمة الرئيسية", () => {
+#if IOS
+            return Window?.Page is AppShell shell ? shell.ShowMenuAsync() : Task.CompletedTask;
+#else
+            if (Window?.Page is FlyoutPage flyout) flyout.IsPresented = true; return Task.CompletedTask;
+#endif
+        }); menuButton.TextColor = Colors.White; menuButton.VerticalOptions = LayoutOptions.Center; heading.Add(menuButton, 2);
         NavigationPage.SetHasNavigationBar(this, false);
         var greeting = Ui.Label("السّلام عليكم", 21, true); greeting.TextColor = Colors.White;
         var subtitle = Ui.Label("لحظاتٌ تقرّبك… وتملأ يومك طمأنينة", 11); subtitle.TextColor = Color.FromArgb("#E8D8AC");

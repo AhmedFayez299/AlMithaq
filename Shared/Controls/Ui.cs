@@ -86,6 +86,9 @@ public static class Ui
         button.MinimumWidthRequest = button.MinimumHeightRequest = 48;
         button.CornerRadius = primary ? 28 : 16;
         button.Padding = 0;
+#if IOS
+        if (primary) AlMithaq.Platforms.iOS.CircularButton.Attach(button);
+#endif
         if (!primary) button.BackgroundColor = Colors.Transparent;
         SemanticProperties.SetDescription(button, description);
         ToolTipProperties.SetText(button, description);
@@ -124,6 +127,23 @@ public static class Ui
         page.Title = title; page.BackgroundColor = Paper; page.FlowDirection = FlowDirection.RightToLeft;
         ThemeProperty(page, ContentPage.BackgroundColorProperty, "AppPaper");
         if (!nativeHeader) return;
+#if IOS
+        NavigationPage.SetHasBackButton(page, false);
+        var heading = Label(title, 17, true); heading.TextColor = Colors.White;
+        heading.HorizontalTextAlignment = TextAlignment.Center; heading.VerticalTextAlignment = TextAlignment.Center;
+        heading.MaxLines = 1; heading.LineBreakMode = LineBreakMode.TailTruncation;
+        heading.SetBinding(Microsoft.Maui.Controls.Label.TextProperty, new Binding(nameof(ContentPage.Title), source: page));
+        var bar = new Grid { FlowDirection = FlowDirection.LeftToRight, HeightRequest = 48,
+            ColumnDefinitions = { new(44), new(GridLength.Star), new(44), new(44) } };
+        var back = Icon("\uf053", "رجوع", () => BackAsync(page)); back.TextColor = Colors.White;
+        var menu = Icon("\uf0c9", "القائمة الرئيسية", () => page.Window?.Page is AppShell shell ? shell.ShowMenuAsync() : Task.CompletedTask);
+        menu.TextColor = Colors.White;
+        bar.Add(back); bar.Add(heading, 1); bar.Add(ThemeToggle(), 2); bar.Add(menu, 3);
+        void SizeHeader() { if (page.Width > 32) bar.WidthRequest = page.Width - 32; }
+        page.SizeChanged += (_, _) => SizeHeader(); SizeHeader();
+        NavigationPage.SetTitleView(page, bar);
+        return;
+#else
         var heading = Label(title, 18, true);
         heading.TextColor = Colors.White; heading.HeightRequest = 48;
         heading.HorizontalOptions = LayoutOptions.Fill; heading.VerticalTextAlignment = TextAlignment.Center;
@@ -139,6 +159,7 @@ public static class Ui
         bar.Add(ThemeToggle(), 2); bar.Add(heading, 1);
         var back = Icon("\uf053", "رجوع", () => BackAsync(page)); back.TextColor = Colors.White; bar.Add(back, 0);
         NavigationPage.SetTitleView(page, bar);
+#endif
     }
     private static Task BackAsync(ContentPage page)
     {

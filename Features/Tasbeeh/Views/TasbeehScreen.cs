@@ -28,6 +28,10 @@ public partial class TasbeehPage : ContentPage
         var tap = Ui.Button("", Increment); tap.CornerRadius = 100; tap.Padding = 0;
         SemanticProperties.SetDescription(tap, "إضافة تسبيحة");
         var counter = new Grid { WidthRequest = 232, HeightRequest = 232, HorizontalOptions = LayoutOptions.Center, Margin = new Thickness(0, 8) }; _dialView = new GraphicsView { Drawable = _dial, InputTransparent = true };
+#if IOS
+        tap.WidthRequest = tap.HeightRequest = 182;
+        AlMithaq.Platforms.iOS.CircularButton.Attach(tap);
+#endif
         tap.Margin = 25; tap.BorderColor = Color.FromArgb("#68A893"); tap.BorderWidth = 1;
         counter.Add(_dialView); counter.Add(tap); counter.Add(counterContent);
         var goalRow = new Grid { ColumnDefinitions = { new(GridLength.Star), new(GridLength.Star), new(GridLength.Star) }, ColumnSpacing = 8 };

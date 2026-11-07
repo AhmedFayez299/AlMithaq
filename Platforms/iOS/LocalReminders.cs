@@ -26,6 +26,16 @@ internal static class LocalReminders
         {
             var pending = await Center.GetPendingNotificationRequestsAsync();
             var settings = await Center.GetNotificationSettingsAsync();
+#if DEBUG
+            // Keep only non-personal system permission state for device diagnostics.
+            File.WriteAllText(Path.Combine(FileSystem.CacheDirectory, "notification-sound-status.json"),
+                System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    Authorization = settings.AuthorizationStatus.ToString(),
+                    Sound = settings.SoundSetting.ToString(),
+                    Alert = settings.AlertSetting.ToString()
+                }));
+#endif
             var existing = pending.Select(request => request.Identifier)
                 .Where(id => id.StartsWith(Prefix, StringComparison.Ordinal) && !id.StartsWith(Prefix + "test.", StringComparison.Ordinal)).ToArray();
             var reminders = settings.AuthorizationStatus == UNAuthorizationStatus.Authorized
@@ -53,7 +63,7 @@ internal static class LocalReminders
                 var prayer = new PrayerService();
                 var selected = Enumerable.Range(0, 5).Where(AdhanSettings.ForPrayer).Select(i => AdhanSettings.Prayers[i]).ToHashSet();
                 foreach (var alarm in AdhanPlan.Build(local, zone, date => prayer.GetDay(location.Location, date), selected).Take(30))
-                    yield return new("adhan", DateTimeOffset.FromUnixTimeMilliseconds(alarm.At), "حان وقت الصلاة", $"حان الآن موعد صلاة {alarm.Name}.");
+                    yield return new("adhan", DateTimeOffset.FromUnixTimeMilliseconds(alarm.At), "حان وقت الصلاة", $"حان الآن موعد صلاة {alarm.Name}. اضغط لاستكمال الأذان داخل التطبيق.");
             }
             if (QiyamSettings.Enabled)
             {
@@ -84,10 +94,22 @@ internal static class LocalReminders
         }
     }
 
-    internal static async Task TestAsync(string kind, string title, bool sound = true)
+    internal static async Task<bool> TestAsync(string kind, string title, bool sound = true)
     {
-        if (!await RequestPermissionAsync()) return;
-        await ScheduleAsync(Prefix + "test." + kind, new(kind, DateTimeOffset.Now.AddSeconds(10), title, "هذا تنبيه تجريبي من الميثاق.", sound));
+        if (!await RequestPermissionAsync()) return false;
+        if (sound && (await Center.GetNotificationSettingsAsync()).SoundSetting != UNNotificationSetting.Enabled)
+        {
+            await MainThread.InvokeOnMainThreadAsync(async () =>
+            {
+                if (Application.Current?.Windows.FirstOrDefault()?.Page is not { } page) return;
+                if (await page.DisplayAlertAsync("صوت الإشعارات غير مفعّل",
+                    "فعّل Sounds من إعدادات إشعارات الميثاق على الآيفون، ثم أعد الاختبار.", "فتح الإعدادات", "إلغاء"))
+                    AppInfo.ShowSettingsUI();
+            });
+            return false;
+        }
+        await ScheduleAsync(Prefix + "test." + kind, new(kind, DateTimeOffset.Now.AddSeconds(10), title, kind == "adhan" ? "تنبيه تجريبي. اضغط لاستكمال الأذان داخل التطبيق." : "هذا تنبيه تجريبي من الميثاق.", sound));
+        return true;
     }
 
     private static async Task ScheduleAsync(string id, Reminder reminder)
@@ -95,6 +117,12 @@ internal static class LocalReminders
         var seconds = (reminder.At - DateTimeOffset.Now).TotalSeconds;
         if (seconds <= 0) return;
         using var content = new UNMutableNotificationContent { Title = reminder.Title, Body = reminder.Body };
+        if (reminder.Kind == "adhan")
+        {
+            content.UserInfo = Foundation.NSDictionary.FromObjectsAndKeys(
+                new Foundation.NSObject[] { new Foundation.NSNumber(AdhanSettings.Voice), new Foundation.NSNumber(29.8) },
+                new Foundation.NSObject[] { new Foundation.NSString("adhan.voice"), new Foundation.NSString("adhan.clip-seconds") });
+        }
         if (reminder.Sound)
         {
             content.Sound = reminder.Kind switch

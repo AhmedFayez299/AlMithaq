@@ -1,4 +1,5 @@
-﻿using AlMithaq.Core.Abstractions;
+﻿#if !IOS
+using AlMithaq.Core.Abstractions;
 using AlMithaq.Shared.Controls;
 
 namespace AlMithaq;
@@ -61,3 +62,5 @@ public sealed class AppNavigator(IServiceProvider services) : IAppNavigator, IDi
     }
 
 }
+
+#endif

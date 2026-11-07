@@ -20,7 +20,11 @@ public partial class App : Application
         window.Stopped += (_, _) => launch.Suspend();
         window.Resumed += (_, _) => launch.Resume();
 #if IOS
-        window.Activated += (_, _) => _ = Platforms.iOS.LocalReminders.RefreshAsync();
+        window.Activated += (_, _) =>
+        {
+            _ = Platforms.iOS.LocalReminders.RefreshAsync();
+            _ = Platforms.iOS.AppStoreUpdates.CheckAsync(window);
+        };
 #endif
         window.Destroying += (_, _) => { launch.Suspend(); scope.Dispose(); };
         return window;

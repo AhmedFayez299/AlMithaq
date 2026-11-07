@@ -31,9 +31,21 @@ public sealed class SalawatSettingsView : VerticalStackLayout
         var volumeText = Ui.Label($"مستوى صوت التذكير · {SalawatSettings.Volume:P0}", 12);
         volume.ValueChanged += (_, e) => { SalawatSettings.Volume = e.NewValue; SalawatCoordinator.UpdateVolume(); volumeText.Text = $"مستوى صوت التذكير · {e.NewValue:P0}"; };
         Add(volumeText); Add(volume);
+#if IOS
+        Add(Ui.Label("صوت بشري قصير يعمل دون إنترنت. على الآيفون يتبع صوت الإشعار مستوى الرنين والتنبيهات؛ ألغِ الوضع الصامت وفعّل Sounds من إعدادات إشعارات الميثاق. قد يكتمه وضع التركيز. شريط الصوت هنا يضبط المعاينة فقط.", 12));
+#else
         Add(Ui.Label("صوت بشري قصير يعمل دون إنترنت، مستقل عن صوت الوسائط والرنين الصامت. يُضبط صوت المنبّه مؤقتًا أثناء التذكير ثم يُعاد لمستواه السابق. أثناء «عدم الإزعاج» اسمح بالمنبّهات من إعدادات الهاتف.", 12));
+#endif
         Ui.ThemeProperty(_status, Label.TextColorProperty, "AppMuted"); Add(_status);
+#if IOS
+        var test = Ui.AsyncButton("اختبار التذكير بعد ١٠ ثوانٍ", async () =>
+        {
+            var scheduled = await AlMithaq.Platforms.iOS.LocalReminders.TestAsync("salawat", "اختبار تذكير الصلاة على النبي", SalawatSettings.Sound);
+            _status.Text = scheduled ? "جُدول الاختبار؛ يمكنك إغلاق الشاشة الآن" : "لم يُجدوَل الاختبار؛ راجع أذونات الإشعارات والصوت";
+        }, true); test.FontSize = 13; Add(test);
+#else
         var test = Ui.AsyncButton("اختبار التذكير بعد ١٠ ثوانٍ", () => { SalawatCoordinator.Test(); _status.Text = "جُدول الاختبار؛ يمكنك إغلاق الشاشة الآن"; return Task.CompletedTask; }, true); test.FontSize = 13; Add(test);
+#endif
         _enabled.Toggled += async (_, e) =>
         {
             if (_sync) return;

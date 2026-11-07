@@ -30,13 +30,25 @@ public sealed class AdhanSettingsView : VerticalStackLayout
         var volume = new Slider { Minimum = 0, Maximum = 1, Value = AdhanSettings.Volume };
         var volumeCaption = Ui.Label($"مستوى الأذان · {AdhanSettings.Volume:P0}", 11);
         volume.ValueChanged += (_, e) => { AdhanSettings.Volume = e.NewValue; AdhanCoordinator.UpdateVolume(); volumeCaption.Text = $"مستوى الأذان · {e.NewValue:P0}"; };
+#if IOS
+        var note = Ui.Label("صوت الأذان مرفق دون إنترنت. إشعار iOS يستخدم مقطعًا قصيرًا؛ اضغط عليه لاستكمال الأذان داخل التطبيق، ولإيقافه استخدم زر إيقاف المعاينة. صوت الإشعار يتبع مستوى الرنين والتنبيهات. ألغِ الصامت وفعّل Sounds لإشعارات الميثاق. إذا انقطع الصوت عند اختفاء البانر، اختر نمط البانر «دائم» من إعدادات إشعارات الميثاق في الآيفون. شريط الصوت يضبط المعاينة فقط.", 10); Ui.ThemeProperty(note, Label.TextColorProperty, "AppMuted");
+#else
         var note = Ui.Label("علي بن أحمد ملا وأحمد الحداد · الصوتان مرفقان ويعملان دون إنترنت. يتأثر الصوت بمستوى المنبّه ووضع عدم الإزعاج في الهاتف.", 10); Ui.ThemeProperty(note, Label.TextColorProperty, "AppMuted");
+#endif
         var permissions = Ui.AsyncButton("مراجعة الأذونات وتفعيل الأذان", async () => { await AdhanCoordinator.EnableAsync(); Refresh(); }, true); permissions.FontSize = 12;
         Add(enableRow); Add(_status); Add(voices); Add(prayers); Add(volumeCaption); Add(volume); Add(note); Add(permissions);
         var test = Ui.AsyncButton("اختبار تنبيه بعد ١٠ ثوانٍ", async () =>
         {
             if (!AdhanSettings.Enabled) { _status.Text = "فعّل الأذان والأذونات أولًا"; return; }
-            try { AdhanCoordinator.TestAlarm(); _status.Text = "جُدول الاختبار؛ يمكنك إغلاق الشاشة الآن"; }
+            try
+            {
+#if IOS
+                var scheduled = await AlMithaq.Platforms.iOS.LocalReminders.TestAsync("adhan", "اختبار تنبيه الصلاة");
+                _status.Text = scheduled ? "جُدول الاختبار؛ يمكنك إغلاق الشاشة الآن" : "لم يُجدوَل الاختبار؛ راجع أذونات الإشعارات والصوت";
+#else
+                AdhanCoordinator.TestAlarm(); _status.Text = "جُدول الاختبار؛ يمكنك إغلاق الشاشة الآن";
+#endif
+            }
             catch (Exception ex) { _status.Text = ex.Message; }
             await Task.CompletedTask;
         }, true); test.FontSize = 12; Add(test);

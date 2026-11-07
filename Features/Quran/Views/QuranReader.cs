@@ -122,7 +122,7 @@ public partial class QuranPage : ContentPage
         {
             _search.IsVisible = !_search.IsVisible;
             if (_search.IsVisible) Dispatcher.Dispatch(() => { if (_search.IsVisible) _search.Focus(); });
-            else if (_document is not null) { var anchor = _shown.FirstOrDefault() ?? All.First(); ClearSearch(); Show(anchor); }
+            else if (_document is not null) { var anchor = _shown.FirstOrDefault() ?? All.First(); ClearSearch(); Show(anchor, preserveAudio: true); }
             return Task.CompletedTask;
         }), 1);
         title.Add(Ui.Icon("\uf1de", "إعدادات القراءة والصوت", _settingsSheet.ShowAsync), 2);
@@ -171,6 +171,9 @@ public partial class QuranPage : ContentPage
         nowPlaying.Remove(_playing); var info = Ui.Stack(_playing, timeline); info.Spacing = 0; nowPlaying.Add(info);
         var panelContent = Ui.Stack(nowPlaying, playback, downloadProgress); panelContent.Spacing = 0;
         timeline.HeightRequest = 22; _playToggle.WidthRequest = _playToggle.HeightRequest = 48;
+#if IOS
+        _playToggle.CornerRadius = 24;
+#endif
         var playerPanel = Ui.Card(panelContent);
         playerPanel.Padding = new Thickness(10, 0); playerPanel.Margin = new Thickness(8, 0, 8, 3);
         var bottom = Ui.Stack(playerPanel); bottom.Spacing = 0;
@@ -486,7 +489,7 @@ public partial class QuranPage : ContentPage
         HideVerseBar();
         _searchCancellation?.Cancel(); _searchCancellation?.Dispose(); _searchCancellation = new(); var ct = _searchCancellation.Token;
         if (_document is null) return;
-        if (query.Trim().Length < 2) { if (query.Length == 0) Show(_shown.FirstOrDefault() ?? All.First()); else _status.Text = "اكتب حرفين على الأقل للبحث"; return; }
+        if (query.Trim().Length < 2) { if (query.Length == 0) Show(_shown.FirstOrDefault() ?? All.First(), preserveAudio: true); else _status.Text = "اكتب حرفين على الأقل للبحث"; return; }
         await GuardAsync(async () => { await Task.Delay(300, ct); var result = await _repository.SearchAsync(query, ct); ct.ThrowIfCancellationRequested(); if (!_active) return; StopPlayback("search results changed"); _mushaf.IsVisible = false; _list.IsVisible = true; Populate(result); _status.Text = $"نتائج البحث: {result.Count}";
             if (result.Count > 0) Dispatcher.Dispatch(() => { if (_active && !ct.IsCancellationRequested && _list.IsVisible) _list.ScrollTo(0, position: ScrollToPosition.Start, animate: false); }); });
     }

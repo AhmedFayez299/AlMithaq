@@ -1,4 +1,5 @@
-﻿using AlMithaq.Shared.Controls;
+﻿#if !IOS
+using AlMithaq.Shared.Controls;
 
 namespace AlMithaq;
 
@@ -88,3 +89,5 @@ public partial class AppShell : FlyoutPage
     }
 }
 
+
+#endif

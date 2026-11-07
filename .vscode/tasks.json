@@ -1,0 +1,23 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "maui: Build iOS",
+      "type": "maui",
+      "project": "${workspaceFolder}/AlMithaq.csproj",
+      "targetFramework": "net10.0-ios",
+      "configuration": "Debug",
+      "group": "build",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "maui: Build Android",
+      "type": "maui",
+      "project": "${workspaceFolder}/AlMithaq.csproj",
+      "targetFramework": "net10.0-android",
+      "configuration": "Debug",
+      "group": "build",
+      "problemMatcher": "$msCompile"
+    }
+  ]
+}

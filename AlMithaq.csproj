@@ -189,4 +189,15 @@
 
 <ItemGroup><Compile Remove="tests\**\*.cs;obj\**\*.cs;bin\**\*.cs" /><None Remove="tests\**" /></ItemGroup>
 
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0-ios'">
+    <MauiXaml Remove="AppShell.xaml" />
+  </ItemGroup>
+  <!-- Xcode 26.3 ships the iOS 26.2 SDK. Limit this workaround to local Debug builds. -->
+  <Target Name="AllowXcode263WithIos262ForDebug"
+          BeforeTargets="_ValidateXcodeVersion"
+          Condition="'$(Configuration)' == 'Debug' and '$(TargetFramework)' == 'net10.0-ios' and '$(_ShortPackageVersion)' == '26.2.10197' and '$(_XcodeVersion)' == '26.3'">
+    <PropertyGroup>
+      <_IsMatchingXcode>true</_IsMatchingXcode>
+    </PropertyGroup>
+  </Target>
 </Project>

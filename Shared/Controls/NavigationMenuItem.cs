@@ -18,7 +18,13 @@ public sealed class NavigationMenuItem : Border
         var hit = Ui.AsyncButton("", navigate, true); hit.BackgroundColor = Colors.Transparent; hit.Padding = 0; hit.CornerRadius = 14;
         SemanticProperties.SetDescription(hit, title + "، " + caption);
         var layers = new Grid(); layers.Add(row); layers.Add(hit); Content = layers;
+#if IOS
+        Loaded += (_, _) => { AppAppearance.Changed -= Render; AppAppearance.Changed += Render; Render(); };
+        Unloaded += (_, _) => AppAppearance.Changed -= Render;
+        Render();
+#else
         AppAppearance.Changed += Render; Render();
+#endif
     }
     public void SetSelected(bool selected) { _selected = selected; Render(); }
     private static Color Palette(string key, Color fallback) => Application.Current?.Resources.TryGetValue(key, out var value) == true ? (Color)value : fallback;

@@ -1,0 +1,44 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "AlMithaq — iPhone USB",
+      "type": "maui",
+      "request": "launch",
+      "project": "${workspaceFolder}/AlMithaq.csproj",
+      "configuration": "Debug",
+      "targetFramework": "net10.0-ios",
+      "preLaunchTask": "maui: Build iOS",
+      "device": "00008020-000A2D383AC1402E",
+      "connectionType": "usb"
+    },
+    {
+      "name": "AlMithaq — iPhone Simulator",
+      "type": "maui",
+      "request": "launch",
+      "project": "${workspaceFolder}/AlMithaq.csproj",
+      "configuration": "Debug",
+      "targetFramework": "net10.0-ios",
+      "preLaunchTask": "maui: Build iOS",
+      "device": "C82F5659-0D8B-4067-AD5C-05CE7784DB26"
+    },
+    {
+      "name": "AlMithaq — iOS",
+      "type": "maui",
+      "request": "launch",
+      "project": "${workspaceFolder}/AlMithaq.csproj",
+      "configuration": "Debug",
+      "targetFramework": "net10.0-ios",
+      "preLaunchTask": "maui: Build iOS"
+    },
+    {
+      "name": "AlMithaq — Android",
+      "type": "maui",
+      "request": "launch",
+      "project": "${workspaceFolder}/AlMithaq.csproj",
+      "configuration": "Debug",
+      "targetFramework": "net10.0-android",
+      "preLaunchTask": "maui: Build Android"
+    }
+  ]
+}

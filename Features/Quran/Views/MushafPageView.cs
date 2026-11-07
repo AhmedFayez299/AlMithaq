@@ -51,7 +51,7 @@ public sealed class MushafPageView : ContentView
             if (e.Result != WebNavigationResult.Success) return;
             try
             {
-                var number = await _web.EvaluateJavaScriptAsync("window.mushafPageNumber||0");
+                var number = await EvaluateScriptAsync("window.mushafPageNumber||0");
                 if (!int.TryParse(number.Trim('"'), out var page) || page != _requestedPage) return;
                 _ready = true; _page = page;
                 await SetZoomAsync(_zoom); await HighlightAsync(_surah, _ayah);
@@ -61,6 +61,18 @@ public sealed class MushafPageView : ContentView
         };
         Paint();
     }
+#if IOS
+    private async Task<string> EvaluateScriptAsync(string script)
+    {
+        if (_web.Handler?.PlatformView is not WebKit.WKWebView native) return "";
+        // WebKit returns a native value; request a string even for commands returning undefined.
+        var result = await native.EvaluateJavaScriptAsync("String(" + script + ")");
+        return result?.ToString() ?? "";
+    }
+#else
+    private Task<string> EvaluateScriptAsync(string script) => _web.EvaluateJavaScriptAsync(script);
+#endif
+
     private void Paint()
     {
         var color = Color.FromArgb(_theme == 2 ? "#101f1c" : _theme == 0 ? "#f0e5d0" : "#fffcf2");
@@ -92,7 +104,7 @@ public sealed class MushafPageView : ContentView
     public async Task SetFrameStyleAsync(int style)
     {
         _frameStyle = Math.Clamp(style, 0, 3);
-        if (_ready) await _web.EvaluateJavaScriptAsync($"document.body.dataset.frame='{_frameStyle}'");
+        if (_ready) await EvaluateScriptAsync($"document.body.dataset.frame='{_frameStyle}'");
     }
     public async Task ShowAsync(int page, int surah = 0, int ayah = 0)
     {
@@ -103,23 +115,52 @@ public sealed class MushafPageView : ContentView
         if (!_ready) { _overlay.IsVisible = true; _busy.IsRunning = true; _web.Opacity = 0; _message.Text = $"جارٍ فتح صفحة {page}…"; }
         try
         {
-            var leaves = await Task.WhenAll(PageAsync(page), PageAsync(page - 1), PageAsync(page + 1));
+                        var leaves = await Task.WhenAll(PageAsync(page), PageAsync(page - 1), PageAsync(page + 1));
+
             if (request != _request) return;
             if (_ready)
             {
                 var arguments = string.Join(",", page.ToString(System.Globalization.CultureInfo.InvariantCulture),
                     JsonSerializer.Serialize(leaves[0]), JsonSerializer.Serialize(leaves[1]), JsonSerializer.Serialize(leaves[2]),
                     _zoom.ToString(System.Globalization.CultureInfo.InvariantCulture), _theme.ToString());
-                await _web.EvaluateJavaScriptAsync("window.installPages(" + arguments + ")");
+                await EvaluateScriptAsync("window.installPages(" + arguments + ")");
                 if (request != _request) return;
                 _page = page; await HighlightAsync(surah, ayah);
             }
-            else _web.Source = new HtmlWebViewSource { Html = MushafMarkup.BuildDocument(page, leaves[0]!, leaves[1], leaves[2], _theme, _frameStyle) };
+            else
+            {
+                _web.Source = new HtmlWebViewSource { Html = MushafMarkup.BuildDocument(page, leaves[0]!, leaves[1], leaves[2], _theme, _frameStyle) };
+#if IOS
+                // WKWebView can finish inline HTML without delivering a MAUI Navigated event.
+                // Check the document itself, and abandon checks when a newer page is requested.
+                for (var attempt = 0; attempt < 100 && request == _request && !_ready; attempt++)
+                {
+                    await Task.Delay(100);
+                    if (request != _request) return;
+                    if (_web.Handler is null) continue;
+                    try
+                    {
+                        var loaded = await EvaluateScriptAsync("String(document.readyState === 'complete' && window.mushafPageNumber || 0)");
+                        if (!int.TryParse(loaded?.Trim('"'), out var loadedPage) || loadedPage != page) continue;
+                        _ready = true; _page = page;
+                        await SetZoomAsync(_zoom); await HighlightAsync(_surah, _ayah);
+                        if (request != _request) return;
+                        _overlay.IsVisible = false; _busy.IsRunning = false; _web.Opacity = 1;
+                    }
+                    catch (Exception ex) { System.Diagnostics.Debug.WriteLine(ex); }
+                }
+                if (request == _request && !_ready)
+                {
+                    _message.Text = "تعذر عرض صفحة المصحف. اضغط إعادة فتح الصفحة.";
+                    _busy.IsRunning = false;
+                }
+#endif
+            }
         }
         catch (Exception ex)
         {
             if (request != _request) return;
-            if (_ready) try { await _web.EvaluateJavaScriptAsync("window.cancelTurn()"); } catch { }
+            if (_ready) try { await EvaluateScriptAsync("window.cancelTurn()"); } catch { }
             _message.Text = "تعذر فتح الصفحة. اضغط إعادة المحاولة."; _overlay.IsVisible = true; _busy.IsRunning = false;
             System.Diagnostics.Debug.WriteLine(ex);
         }
@@ -127,26 +168,26 @@ public sealed class MushafPageView : ContentView
     public async Task HighlightAsync(int surah, int ayah)
     {
         _surah = surah; _ayah = ayah;
-        if (_ready) try { await _web.EvaluateJavaScriptAsync($"window.markAyah({surah},{ayah})"); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine(ex); }
+        if (_ready) try { await EvaluateScriptAsync($"window.markAyah({surah},{ayah})"); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine(ex); }
     }
     public void CancelPending()
     {
         if (_ready) _ = CancelGestureAsync();
-        ++_request; _page = _requestedPage = 0; _ready = false; _web.Opacity = 0;
+                ++_request; _page = _requestedPage = 0; _ready = false; _web.Opacity = 0;
     }
     private async Task CancelGestureAsync()
     {
-        try { await _web.EvaluateJavaScriptAsync("window.cancelTurn()"); }
+        try { await EvaluateScriptAsync("window.cancelTurn()"); }
         catch (Exception ex) { System.Diagnostics.Debug.WriteLine(ex); }
     }
     public async Task SetZoomAsync(double zoom)
     {
         _zoom = Math.Clamp(zoom, 1, 3.5);
-        if (_ready) try { await _web.EvaluateJavaScriptAsync($"window.setZoom({_zoom.ToString(System.Globalization.CultureInfo.InvariantCulture)})"); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine(ex); }
+        if (_ready) try { await EvaluateScriptAsync($"window.setZoom({_zoom.ToString(System.Globalization.CultureInfo.InvariantCulture)})"); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine(ex); }
     }
     public async Task SetThemeAsync(int theme)
     {
         _theme = Math.Clamp(theme, 0, 2); Paint();
-        if (_ready) try { await _web.EvaluateJavaScriptAsync($"window.setPalette({_theme})"); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine(ex); }
+        if (_ready) try { await EvaluateScriptAsync($"window.setPalette({_theme})"); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine(ex); }
     }
 }
