@@ -2,6 +2,15 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "AlMithaq — Android",
+      "type": "maui",
+      "request": "launch",
+      "project": "${workspaceFolder}/AlMithaq.csproj",
+      "configuration": "Debug",
+      "targetFramework": "net10.0-android",
+      "preLaunchTask": "maui: Build Android"
+    },
+    {
       "name": "AlMithaq — iPhone USB",
       "type": "maui",
       "request": "launch",
@@ -30,15 +39,6 @@
       "configuration": "Debug",
       "targetFramework": "net10.0-ios",
       "preLaunchTask": "maui: Build iOS"
-    },
-    {
-      "name": "AlMithaq — Android",
-      "type": "maui",
-      "request": "launch",
-      "project": "${workspaceFolder}/AlMithaq.csproj",
-      "configuration": "Debug",
-      "targetFramework": "net10.0-android",
-      "preLaunchTask": "maui: Build Android"
     }
   ]
 }

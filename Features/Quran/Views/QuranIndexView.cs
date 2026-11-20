@@ -13,6 +13,7 @@ public sealed class QuranIndexView : Grid
         public QuranVerse Anchor { get; } = anchor;
     }
     private readonly SearchBar _search;
+    public SearchBar Search => _search;
     public bool TryNavigateBack()
     {
         if (string.IsNullOrEmpty(_search.Text)) return false;
@@ -22,7 +23,7 @@ public sealed class QuranIndexView : Grid
         IReadOnlyList<QuarterStart> quarters, Action<QuranVerse> choose, QuranVerse? resume = null)
     {
         ClassId = "choice-host"; RowSpacing = 5; Padding = new Thickness(12, 8, 12, 0);
-        for (var i = 0; i < 4; i++) RowDefinitions.Add(new(i == 3 ? GridLength.Star : GridLength.Auto));
+        for (var i = 0; i < 3; i++) RowDefinitions.Add(new(i == 2 ? GridLength.Star : GridLength.Auto));
         var all = document.Chapters.SelectMany(c => c.Verses).ToArray();
         var byKey = all.ToDictionary(v => v.Key);
         var tab = 0;
@@ -32,15 +33,13 @@ public sealed class QuranIndexView : Grid
         var list = new CollectionView { IsGrouped = true, SelectionMode = SelectionMode.None, VerticalOptions = LayoutOptions.Fill, ItemSizingStrategy = ItemSizingStrategy.MeasureFirstItem };
         var tabs = new Grid { ColumnSpacing = 3 };
         var buttons = new List<Button>();
-        var quickPage = new PageNumberDropdown { IsVisible = false };
-        quickPage.SelectedPageChanged += (_, _) => { var verse = all.FirstOrDefault(v => page(v) == quickPage.SelectedPage); if (verse is not null) choose(verse); };
-        var continueReading = Ui.Button("متابعة القراءة", () => choose(resume ?? all[0]));
-        continueReading.ImageSource = new FontImageSource { FontFamily = "FontIconSolid", Glyph = "\uf053", Size = 14, Color = Colors.White };
-        continueReading.FlowDirection = FlowDirection.LeftToRight;
-        continueReading.ContentLayout = new Button.ButtonContentLayout(Button.ButtonContentLayout.ImagePosition.Left, 8);
-        continueReading.FontSize = 13; continueReading.MinimumHeightRequest = continueReading.HeightRequest = 42; continueReading.Padding = 6;
-        var shortcut = new Grid { ColumnDefinitions = { new(GridLength.Star), new(GridLength.Star) }, ColumnSpacing = 8 };
-        shortcut.Add(continueReading); shortcut.Add(quickPage, 1);
+        var continueReading = Ui.Icon("\uf5da", "متابعة القراءة", () => { choose(resume ?? all[0]); return Task.CompletedTask; });
+        continueReading.WidthRequest = continueReading.MinimumWidthRequest = 40;
+        continueReading.HeightRequest = continueReading.MinimumHeightRequest = 44;
+        continueReading.FontSize = 17;
+        Ui.ThemeProperty(continueReading,Button.BackgroundColorProperty,"AppSoft");
+        var searchRow = new Grid { ColumnDefinitions = { new(GridLength.Star),new(40) },ColumnSpacing = 7 };
+        searchRow.Add(_search); searchRow.Add(continueReading,1);
         void Render()
         {
             var query = ArabicSearch.Normalize(NumberInput.Normalize(_search.Text ?? ""));
@@ -80,8 +79,6 @@ public sealed class QuranIndexView : Grid
             list.ItemsSource = groups.Select(g => new IndexGroup(g.Title, page(g.Anchor), g.Anchor,
                     g.Where(r => query.Length == 0 || ArabicSearch.Normalize(g.Title).Contains(query, StringComparison.OrdinalIgnoreCase) || ArabicSearch.Normalize(r.Title + " " + r.Detail + " " + r.Badge + " " + r.Page).Contains(query, StringComparison.OrdinalIgnoreCase))))
                 .Where(g => g.Count > 0).ToArray();
-            quickPage.IsVisible = tab == 2;
-            Grid.SetColumnSpan(continueReading, tab == 2 ? 1 : 2);
             foreach (var (button, index) in buttons.Select((b, i) => (b, i)))
             {
                 if (index == tab) { button.BackgroundColor = Ui.Green; button.TextColor = Colors.White; }
@@ -129,11 +126,11 @@ public sealed class QuranIndexView : Grid
         {
             var index = buttons.Count; tabs.ColumnDefinitions.Add(new(GridLength.Star));
             var button = Ui.Button(text, () => { tab = index; _search.Text = ""; _search.Placeholder = index == 0 ? "اسم السورة أو رقمها…" : index == 1 ? "الجزء أو السورة أو بداية الربع…" : index == 2 ? "رقم الصفحة…" : "ابحث في علاماتك…"; Render(); }, true);
-            button.FontSize = 12; button.Padding = new Thickness(2, 4); button.MinimumHeightRequest = button.HeightRequest = 42; buttons.Add(button); tabs.Add(button, index);
+            button.FontSize = 12; button.Padding = new Thickness(2, 4); button.MinimumHeightRequest = button.HeightRequest = 42; button.BorderWidth = .6; button.BorderColor = Ui.Gold.WithAlpha(.55f); buttons.Add(button); tabs.Add(button, index);
         }
         list.EmptyView = Ui.Label("لا توجد نتائج أو علامات محفوظة هنا", 13);
         _search.TextChanged += (_, _) => Render();
-        this.Add(tabs); this.Add(_search, 0, 1); this.Add(shortcut, 0, 2); this.Add(list, 0, 3);
+        this.Add(tabs); this.Add(searchRow, 0, 1); this.Add(list, 0, 2);
         Render();
     }
     private sealed class QuarterGlyph : IDrawable

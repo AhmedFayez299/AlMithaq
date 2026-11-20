@@ -1,4 +1,4 @@
-﻿using AlMithaq.Shared.Controls;
+using AlMithaq.Shared.Controls;
 
 namespace AlMithaq.Features.Quran.Views;
 
@@ -14,7 +14,7 @@ public sealed class ReaderSettingsView : Grid
         foreach (var picker in new[] { mode, theme, reciter, repeat }) { picker.WidthRequest = -1; picker.HorizontalOptions = LayoutOptions.Fill; }
         font.WidthRequest = zoom.WidthRequest = -1;
         var heading = new Grid { ColumnDefinitions = { new(GridLength.Star), new(GridLength.Auto) } };
-        var title = Ui.Label("إعدادات القرآن", 17, true); title.VerticalOptions = LayoutOptions.Center;
+        var title = Ui.Label("قراءة وتلاوة على راحتك", 17, true); title.VerticalOptions = LayoutOptions.Center;
         heading.Add(title); heading.Add(Ui.Icon("\uf00d", "إغلاق الإعدادات", () => { Hide(); return Task.CompletedTask; }), 1);
         View Field(string label, View control) { var stack = Ui.Stack(Ui.Label(label, 12), control); stack.Spacing = 2; return stack; }
         Grid Pair(View first, View second)
@@ -33,6 +33,7 @@ public sealed class ReaderSettingsView : Grid
             var slider = mode.SelectedIndex == 3 ? zoom : font;
             slider.Value = Math.Clamp(slider.Value + sign * (mode.SelectedIndex == 3 ? .25 : 2), slider.Minimum, slider.Maximum);
         }
+        sizeValue.IsVisible = false;
         var size = new Grid { ColumnDefinitions = { new(GridLength.Auto), new(GridLength.Star), new(GridLength.Auto) }, FlowDirection = FlowDirection.LeftToRight };
         size.Add(Ui.Icon("\uf010", "تصغير", () => { Adjust(-1); return Task.CompletedTask; })); size.Add(font, 1); size.Add(zoom, 1);
         size.Add(Ui.Icon("\uf00e", "تكبير", () => { Adjust(1); return Task.CompletedTask; }), 2);
@@ -44,17 +45,17 @@ public sealed class ReaderSettingsView : Grid
             var index = i; var button = Ui.Button(modeNames[i], () => mode.SelectedIndex = index, true);
             button.FontSize = 13; button.MinimumHeightRequest = 50; modeButtons.Add(button); modes.Add(button, i % 2, i / 2);
         }
-        var reading = Ui.Stack(Ui.Label("طريقة العرض", 13, true), modes, Field("لون الصفحة", theme), Field("إطار السورة", frameStyle), sizeHeading, size, Toggle("متابعة الآية تلقائيًا", follow)); reading.Spacing = 8;
+        var reading = Ui.Stack(ScreenDesign.Section("طريقة القراءة", "\uf518"), modes, Pair(Field("لون الصفحة", theme), Field("إطار السورة", frameStyle)), sizeHeading, size, Toggle("متابعة الآية تلقائيًا", follow)); reading.Spacing = 8;
         var reciterRow = new Grid { ColumnDefinitions = { new(GridLength.Star), new(48) }, ColumnSpacing = 8 };
         var downloadButton = Ui.Icon("\uf019", "تنزيل السورة الحالية بصوت القارئ المختار", async () => { Hide(); await download(); });
         reciterRow.Add(reciter); reciterRow.Add(downloadButton, 1);
-        var audio = Ui.Stack(Field("القارئ", reciterRow), Pair(Field("التكرار", repeat), Field("تتابع الآيات", continuous)), Ui.Label("التلاوة تعمل بالإنترنت. رمز التنزيل يحفظ السورة الحالية للقارئ المختار للاستماع دون إنترنت؛ الصوت المحمّل يشغل مساحة بيانات على جهازك. اضبط مستوى الصوت من رمز السماعة.", 12)); audio.Spacing = 12;
+        var audio = Ui.Stack(ScreenDesign.Section("صوت يرافق قراءتك", "\uf028"),Field("اختر قارئك المفضل", reciterRow), Pair(Field("التكرار", repeat), Toggle("تتابع الآيات", continuous)), Ui.Label("التلاوة تعمل بالإنترنت. رمز التنزيل يحفظ السورة الحالية للقارئ المختار للاستماع دون إنترنت؛ الصوت المحمّل يشغل مساحة بيانات على جهازك. اضبط مستوى الصوت من رمز السماعة.", 12)); audio.Spacing = 12;
         var readingTab = Ui.Button("القراءة", () => { }, true); var audioTab = Ui.Button("التلاوة", () => { }, true);
         var tabs = Pair(readingTab, audioTab);
         var content = Ui.Stack(reading, audio); content.Spacing = 0;
-        var scroll = new ScrollView { Content = content, MaximumHeightRequest = 340 };
+        var scroll = new ScrollView { Content = content, MaximumHeightRequest = 400 };
         var panel = Ui.Stack(heading, tabs, scroll); panel.Spacing = 10;
-        _card = Ui.Card(panel); _card.Padding = 16; _card.Margin = 0; _card.VerticalOptions = LayoutOptions.End; _card.HorizontalOptions = LayoutOptions.Fill; _card.MaximumWidthRequest = 480; Add(_card);
+        _card = ScreenDesign.Surface(panel); _card.StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 26 }; _card.Padding = 16; _card.Margin = 0; _card.VerticalOptions = LayoutOptions.End; _card.HorizontalOptions = LayoutOptions.Fill; _card.MaximumWidthRequest = 480; Add(_card);
         var audioSelected = false;
         void PaintTab(Button button, bool selected)
         {
@@ -75,7 +76,7 @@ public sealed class ReaderSettingsView : Grid
         audioTab.Clicked += (_, _) => { audioSelected = true; Refresh(); };
         mode.SelectedIndexChanged += (_, _) => Refresh(); font.ValueChanged += (_, _) => Refresh(); zoom.ValueChanged += (_, _) => Refresh();
         AppAppearance.Changed += Refresh;
-        SizeChanged += (_, _) => scroll.MaximumHeightRequest = Math.Clamp(Height - 180, 120, 340);
+        SizeChanged += (_, _) => scroll.MaximumHeightRequest = Math.Clamp(Height - 180, 120, 400);
         _refresh = Refresh; Refresh();
     }
     public void Hide() => IsVisible = false;

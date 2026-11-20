@@ -1,12 +1,24 @@
-﻿using Android.App;
+using Android.App;
 using Android.Content.PM;
 using Android.OS;
 
 namespace AlMithaq
 {
-    [Activity(Theme = "@style/Maui.SplashTheme", MainLauncher = true, ResizeableActivity = false, ScreenOrientation = ScreenOrientation.Portrait, LaunchMode = LaunchMode.SingleTask, ConfigurationChanges = ConfigChanges.ScreenSize | ConfigChanges.Orientation | ConfigChanges.UiMode | ConfigChanges.ScreenLayout | ConfigChanges.SmallestScreenSize | ConfigChanges.Density)]
+    [Activity(Theme = "@style/AlMithaq.StartTheme", MainLauncher = true, ResizeableActivity = false, ScreenOrientation = ScreenOrientation.Portrait, LaunchMode = LaunchMode.SingleTask, ConfigurationChanges = ConfigChanges.ScreenSize | ConfigChanges.Orientation | ConfigChanges.UiMode | ConfigChanges.ScreenLayout | ConfigChanges.SmallestScreenSize | ConfigChanges.Density)]
     public partial class MainActivity : MauiAppCompatActivity
     {
+        protected override void OnCreate(Bundle? savedInstanceState)
+        {
+            base.OnCreate(savedInstanceState);
+            Window?.SetBackgroundDrawableResource(Resource.Drawable.almithaq_start_logo);
+            Platforms.Android.AnimatedLaunchCover.Install(this);
+        }
+        public override void OnWindowFocusChanged(bool hasFocus)
+        {
+            base.OnWindowFocusChanged(hasFocus);
+            if (hasFocus && Platforms.Android.ReaderPresentation.IsImmersive)
+                Platforms.Android.ReaderPresentation.SetImmersive(true);
+        }
         public override bool DispatchTouchEvent(Android.Views.MotionEvent? touch)
         {
             if (touch?.ActionMasked == Android.Views.MotionEventActions.Down && CurrentFocus is Android.Widget.EditText input)

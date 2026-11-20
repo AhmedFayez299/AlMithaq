@@ -1,4 +1,4 @@
-﻿using global::Android.App;
+using global::Android.App;
 using global::Android.Content;
 using global::Android.Content.PM;
 using global::Android.Media;
@@ -16,6 +16,7 @@ public sealed class AdhanPlaybackService : Service, AudioManager.IOnAudioFocusCh
     private AudioFocusRequestClass? _focus;
     private AudioManager? _audio;
     private bool _preview;
+    private PowerManager.WakeLock? _startupWake;
     private static AdhanPlaybackService? _current;
     public static bool IsPlaying => _current is not null;
     public static void PlayPreview()
@@ -31,6 +32,7 @@ public sealed class AdhanPlaybackService : Service, AudioManager.IOnAudioFocusCh
     public override StartCommandResult OnStartCommand(Intent? intent, StartCommandFlags flags, int startId)
     {
         if (intent?.Action == "stop") { StopSelf(); return StartCommandResult.NotSticky; }
+        var scheduledAt = intent?.GetLongExtra("scheduledAt", 0) ?? 0;
         _current = this; _preview = intent?.GetBooleanExtra("preview", false) == true;
         var manager = (NotificationManager)GetSystemService(NotificationService)!;
         if (OperatingSystem.IsAndroidVersionAtLeast(26))
@@ -49,6 +51,9 @@ public sealed class AdhanPlaybackService : Service, AudioManager.IOnAudioFocusCh
         ReleasePlayer();
         try
         {
+            // Cover asynchronous media preparation before MediaPlayer takes its playback wake lock.
+            _startupWake = ((PowerManager)GetSystemService(PowerService)!).NewWakeLock(WakeLockFlags.Partial, "AlMithaq:AdhanStartup") ?? throw new InvalidOperationException("تعذر تهيئة تشغيل الأذان");
+            _startupWake.Acquire(15_000);
             _audio = (AudioManager)GetSystemService(AudioService)!;
             using var attributes = new AudioAttributes.Builder().SetUsage(AudioUsageKind.Alarm)!.SetContentType(AudioContentType.Speech)!.Build()!;
             AudioFocusRequest focusResult;
@@ -64,13 +69,23 @@ public sealed class AdhanPlaybackService : Service, AudioManager.IOnAudioFocusCh
 #pragma warning restore CS0618
             }
             if (focusResult != AudioFocusRequest.Granted) { StopSelf(); return StartCommandResult.NotSticky; }
-            var resources = new[] { Resource.Raw.adhan_ali_mulla, Resource.Raw.adhan_haddad };
+            var resources = new[] { Resource.Raw.adhan_ali_mulla, Resource.Raw.adhan_haddad, Resource.Raw.adhan_naser };
             using var file = Resources!.OpenRawResourceFd(resources[AdhanSettings.Voice])!;
             _player = new MediaPlayer(); _player.SetAudioAttributes(attributes);
             _player.SetWakeMode(this, WakeLockFlags.Partial);
             _player.SetDataSource(file.FileDescriptor, file.StartOffset, file.Length);
             _player.SetVolume((float)AdhanSettings.Volume, (float)AdhanSettings.Volume);
-            _player.Prepared += (_, _) => { if (_player is not null) _player.Start(); };
+            _player.Prepared += (_, _) =>
+            {
+                if (_player is null) return;
+                _player.Start(); ReleaseStartupWake();
+                if (!_preview)
+                {
+                    var started = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                    Preferences.Set("adhan.last.started", started);
+                    global::Android.Util.Log.Info("AlMithaq.Adhan", $"Audio started; totalDelayMs={started-(scheduledAt > 0 ? scheduledAt : started)}");
+                }
+            };
             _player.Completion += (_, _) => StopSelf();
             _player.Error += (_, e) => { e.Handled = true; Preferences.Set("adhan.error", "تعذر تشغيل ملف الأذان"); StopSelf(); };
             _player.PrepareAsync();
@@ -80,8 +95,14 @@ public sealed class AdhanPlaybackService : Service, AudioManager.IOnAudioFocusCh
         return StartCommandResult.NotSticky;
     }
     public void OnAudioFocusChange(AudioFocus focusChange) { if (focusChange is AudioFocus.Loss or AudioFocus.LossTransient) StopSelf(); }
+    private void ReleaseStartupWake()
+    {
+        if (_startupWake?.IsHeld == true) _startupWake.Release();
+        _startupWake?.Dispose(); _startupWake = null;
+    }
     private void ReleasePlayer()
     {
+        ReleaseStartupWake();
         _player?.Release(); _player?.Dispose(); _player = null;
         if (OperatingSystem.IsAndroidVersionAtLeast(26) && _focus is not null) { _audio?.AbandonAudioFocusRequest(_focus); _focus.Dispose(); _focus = null; }
         else if (!OperatingSystem.IsAndroidVersionAtLeast(26))

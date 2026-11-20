@@ -1,4 +1,4 @@
-﻿using AlMithaq.Features.Azkar.Services;
+using AlMithaq.Features.Azkar.Services;
 using AlMithaq.Features.Quran.Services;
 using AlMithaq.Shared.Controls;
 
@@ -7,7 +7,7 @@ namespace AlMithaq.Pages;
 public partial class AzkarPage : ContentPage
 {
     private readonly AzkarRepository _repository;
-    private readonly ChoicePicker _category = new() { Title = "قسم الأذكار", ItemsSource = new[] { "أذكار الصباح", "أذكار المساء", "أذكار النوم", "بعد الصلاة", "المفضلة" }, SelectedIndex = 0 };
+    private readonly ChoicePicker _category = new() { Title = "قسم الأذكار", DropdownMaxHeight = 490, ItemsSource = new[] { "أذكار الصباح", "أذكار المساء", "أذكار النوم", "بعد الصلاة", "المفضلة" }, SelectedIndex = 0 };
     private readonly SearchBar _search = new() { Placeholder = "ابحث في أذكار القسم", FontFamily = "Almarai-Regular", FontSize = 13 };
     private readonly Label _summary = Ui.Label("", 11);
     private readonly ProgressBar _progress = new() { ProgressColor = Ui.Green, HeightRequest = 4 };
@@ -45,7 +45,7 @@ public partial class AzkarPage : ContentPage
                 var choice = await PopupSheet.ChooseAsync(this, _duas ? "خيارات الدعاء" : "خيارات الذكر", "المصدر والفضل", "تبديل المفضلة", "نسخ الذكر", "تصفير هذا الذكر");
                 switch (choice)
                 {
-                    case "المصدر والفضل": await DisplayAlertAsync("المصدر كما ورد في البيانات", $"{row.Item.Source}\n\n{row.Item.Benefit}", "إغلاق"); break;
+                    case "المصدر والفضل": await PopupSheet.AlertAsync(this, "المصدر كما ورد في البيانات", $"{row.Item.Source}\n\n{row.Item.Benefit}", "إغلاق"); break;
                     case "تبديل المفضلة": Preferences.Set($"azkar.favorite.{row.Item.Id}", !Preferences.Get($"azkar.favorite.{row.Item.Id}", false)); Filter(); break;
                     case "نسخ الذكر": await Clipboard.Default.SetTextAsync(row.Item.Text + "\n" + row.Item.Source); break;
                     case "تصفير هذا الذكر": row.Done = 0; Preferences.Set(row.Key, 0); UpdateSummary(); break;
@@ -118,7 +118,16 @@ public partial class AzkarPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing(); _active = true;
-        try { _data = await _repository.LoadAsync(); if (_active) SetSection(_duas); }
+        try { _data = await _repository.LoadAsync(); if (_active)
+            {
+                SetSection(_duas);
+                var chapter = Preferences.Get("azkar.home.chapter", 0);
+                if (chapter is 27 or 28)
+                {
+                    Preferences.Remove("azkar.home.chapter"); SetSection(false);
+                    _category.SelectedIndex = _sections.FindIndex(section => section.Chapter == chapter);
+                }
+            } }
         catch (Exception ex) { _summary.Text = "تعذر قراءة الأذكار. أعد فتح الصفحة."; System.Diagnostics.Debug.WriteLine(ex); }
     }
     protected override void OnDisappearing() { _active = false; base.OnDisappearing(); }
@@ -182,7 +191,7 @@ public partial class AzkarPage : ContentPage
     }
     private async Task ResetAsync()
     {
-        if (!await DisplayAlertAsync("جلسة جديدة", "تصفير تقدم القسم الحالي فقط؟", "تصفير", "إلغاء")) return;
+        if (!await PopupSheet.AlertAsync(this, "جلسة جديدة", "تصفير تقدم القسم الحالي فقط؟", "تصفير", "إلغاء")) return;
         foreach (var item in CategoryItems) Preferences.Remove(Key(item)); Filter();
     }
 }

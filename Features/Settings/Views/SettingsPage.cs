@@ -1,4 +1,4 @@
-﻿using AlMithaq.Core.Abstractions;
+using AlMithaq.Core.Abstractions;
 using AlMithaq.Core.Models;
 using AlMithaq.Features.PrayerTimes.Services;
 using AlMithaq.Features.Quran.Services;
@@ -75,16 +75,16 @@ public sealed class SettingsPage : ContentPage
     });
     private async Task ManualLocationAsync()
     {
-        var lat = await DisplayPromptAsync("خط العرض", "قيمة من ‎-90 إلى 90. مثال القاهرة: 30.0444", "التالي", "إلغاء"); if (lat is null) return;
-        var lon = await DisplayPromptAsync("خط الطول", "قيمة من ‎-180 إلى 180. مثال القاهرة: 31.2357", "حفظ", "إلغاء"); if (lon is null) return;
+        var lat = await PopupSheet.PromptAsync(this, "خط العرض", "قيمة من ‎-90 إلى 90. مثال القاهرة: 30.0444", "التالي", "إلغاء"); if (lat is null) return;
+        var lon = await PopupSheet.PromptAsync(this, "خط الطول", "قيمة من ‎-180 إلى 180. مثال القاهرة: 31.2357", "حفظ", "إلغاء"); if (lon is null) return;
         if (!double.TryParse(AlMithaq.Core.Logic.NumberInput.Normalize(lat), NumberStyles.Float, CultureInfo.InvariantCulture, out var a) || !double.TryParse(AlMithaq.Core.Logic.NumberInput.Normalize(lon), NumberStyles.Float, CultureInfo.InvariantCulture, out var b)
             || !double.IsFinite(a) || !double.IsFinite(b) || Math.Abs(a) > 90 || Math.Abs(b) > 180)
-        { await DisplayAlertAsync("إحداثيات غير صحيحة", "اكتب أرقامًا صحيحة ضمن الحدود، واستخدم النقطة للفاصل العشري.", "حسنًا"); return; }
+        { await PopupSheet.AlertAsync(this, "إحداثيات غير صحيحة", "اكتب أرقامًا صحيحة ضمن الحدود، واستخدم النقطة للفاصل العشري.", "حسنًا"); return; }
         _locations.SaveManual(a, b); UpdateLabels();
     }
     private async Task ClearAudioAsync()
     {
-        if (!await DisplayAlertAsync("حذف التلاوات", "حذف ملفات الصوت المنزّلة فقط؟", "حذف", "إلغاء")) return;
+        if (!await PopupSheet.AlertAsync(this, "حذف التلاوات", "حذف ملفات الصوت المنزّلة فقط؟", "حذف", "إلغاء")) return;
         await _media.ClearAudioAsync(); UpdateLabels();
     }
     private async Task ExportAsync()
@@ -101,15 +101,15 @@ public sealed class SettingsPage : ContentPage
         while (true) { var read = await stream.ReadAsync(buffer); if (read == 0) break; if (limited.Length + read > 64 * 1024 * 1024) throw new InvalidDataException("الملف كبير جدًا"); limited.Write(buffer, 0, read); }
         var marks = JsonSerializer.Deserialize<List<VerseBookmark>>(limited.ToArray()); var document = await _quran.LoadAsync();
         if (marks is null || marks.Count > 6236 || marks.Any(b => b is null || b.Surah is < 1 or > 114 || b.Ayah < 1 || b.Ayah > document.Chapters[b.Surah - 1].Verses.Count || b.Note is null || b.Note.Length > 1000))
-        { await DisplayAlertAsync("ملف غير صالح", "تأكد من أن الملف نسخة علامات صحيحة من الميثاق.", "حسنًا"); return; }
-        if (!await DisplayAlertAsync("استيراد العلامات", $"دمج {marks.Count} علامة؟ ملاحظة الملف ستحل محل الملاحظة الحالية للآية نفسها.", "دمج", "إلغاء")) return;
+        { await PopupSheet.AlertAsync(this, "ملف غير صالح", "تأكد من أن الملف نسخة علامات صحيحة من الميثاق.", "حسنًا"); return; }
+        if (!await PopupSheet.AlertAsync(this, "استيراد العلامات", $"دمج {marks.Count} علامة؟ ملاحظة الملف ستحل محل الملاحظة الحالية للآية نفسها.", "دمج", "إلغاء")) return;
         _reading.MergeBookmarks(marks);
-        await DisplayAlertAsync("تم الاستيراد", "العلامات متاحة الآن في قارئ القرآن.", "حسنًا");
+        await PopupSheet.AlertAsync(this, "تم الاستيراد", "العلامات متاحة الآن في قارئ القرآن.", "حسنًا");
     }
     private async Task ShowQuranLicenseAsync()
     {
         var document = await _quran.LoadAsync();
-        await DisplayAlertAsync("Tanzil Quran Text License", document.CopyrightNotice, "إغلاق");
+        await PopupSheet.AlertAsync(this, "Tanzil Quran Text License", document.CopyrightNotice, "إغلاق");
     }
 }
 

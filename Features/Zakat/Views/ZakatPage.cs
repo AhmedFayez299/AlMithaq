@@ -22,7 +22,7 @@ public sealed class ZakatPage : ContentPage
     public ZakatPage()
     {
         Ui.Page(this, "حاسبة الزكاة");
-        var title = Ui.Label("زكاة مالك بخطوات واضحة", 17, true);
+        var title = ScreenDesign.Intro("زكاة مالك بخطوات واضحة","حساب منظم بخطوات بسيطة", "\uf1ec");
         var intro = Ui.Label("اختر النوع، وأدخل أسعار يوم الزكاة بعملة واحدة. الحساب محلي ولا تُرسل أموالك إلى أي خدمة.", 11); Ui.ThemeProperty(intro, Label.TextColorProperty, "AppMuted");
         var confirmation = _confirmation = Ui.Label("أؤكد تحقق الحول الهجري وباقي الشروط الموضحة", 12); confirmation.VerticalOptions = LayoutOptions.Center;
         var conditionGrid = new Grid { ColumnDefinitions = { new(GridLength.Auto), new(GridLength.Star) }, ColumnSpacing = 6 }; conditionGrid.Add(_conditions); conditionGrid.Add(confirmation, 1);
@@ -44,7 +44,10 @@ public sealed class ZakatPage : ContentPage
         Ui.ThemeProperty(entry, Entry.TextColorProperty, "AppInk"); Ui.ThemeProperty(entry, Entry.PlaceholderColorProperty, "AppMuted");
         entry.HeightRequest = 50; Ui.ThemeProperty(entry, Entry.BackgroundColorProperty, "AppSoft");
         entry.TextChanged += (_, _) => InvalidateResult(); _fields[id] = entry;
-        var field = Ui.Stack(Ui.Label(label, 11), entry); field.Spacing = 1; _form.Add(field);
+        var caption = Ui.Label(label,13,true);
+        var frame = new Border { Content = entry,Padding = new Thickness(12,2),StrokeThickness = .8,StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 14 } };
+        Ui.ThemeProperty(frame,Border.StrokeProperty,"AppStrokeBrush"); Ui.ThemeProperty(frame,Border.BackgroundColorProperty,"AppSoft");
+        var field = Ui.Stack(caption,frame); field.Spacing = 6; _form.Add(field);
     }
     private ChoicePicker Choice(string id, string label, string[] options)
     {
@@ -71,25 +74,25 @@ public sealed class ZakatPage : ContentPage
                 _note.Text = "يشترط الملك التام وبلوغ النصاب والحول الهجري. أضف المدخر من الرواتب والإيجار؛ لا تضف قيمة مسكنك أو أدوات الاستعمال. الديون والحاجات الأصلية تختلف تفاصيلها؛ أدخل فقط الخصم الذي أجازه مرجعك. اجمع الأموال التي تُضم شرعًا في حساب واحد، ولا تكررها في قسم آخر.";
                 break;
             case 1:
-                var metalChoice = Choice("metal", "المعدن", ["ذهب مدخر", "فضة مدخرة"]); Field("grams", "الوزن بالجرام"); Choice("karat", "عيار الذهب", ["21", "24", "22", "18", "14", "12", "9"]); Field("purity", "نقاوة الفضة من 1000", "مثل 925"); _fields["purity"].Text = "925"; ((View)_fields["purity"].Parent!).IsVisible = false;
+                var metalChoice = Choice("metal", "المعدن", ["ذهب مدخر", "فضة مدخرة"]); Field("grams", "الوزن بالجرام"); Choice("karat", "عيار الذهب", ["21", "24", "22", "18", "14", "12", "9"]); Field("purity", "نقاوة الفضة من 1000", "مثل 925"); _fields["purity"].Text = "925"; ((View)_fields["purity"].Parent!.Parent!).IsVisible = false;
                 Field("purePrice", "سعر جرام الذهب عيار 24 أو الفضة الخالصة");
                 Choice("goldNisab", "نصاب الذهب", ["ما يعادل 85 غ عيار 21 · مصر", "85 غ ذهب خالص · الدليل"]);
-                metalChoice.SelectedIndexChanged += (_, _) => { var gold = metalChoice.SelectedIndex == 0; ((View)_choices["goldNisab"].Parent!).IsVisible = gold; ((View)_choices["karat"].Parent!).IsVisible = gold; ((View)_fields["purity"].Parent!).IsVisible = !gold; };
+                metalChoice.SelectedIndexChanged += (_, _) => { var gold = metalChoice.SelectedIndex == 0; ((View)_choices["goldNisab"].Parent!).IsVisible = gold; ((View)_choices["karat"].Parent!).IsVisible = gold; ((View)_fields["purity"].Parent!.Parent!).IsVisible = !gold; };
                 _note.Text = "يحوّل الوزن إلى معدن خالص، ويحسب 2.5٪ بعد تحقق الشروط. الفضة: 595 غ خالصة. اختيار نصاب الذهب يوضح اختلاف مرجع 21 و24. حلي الاستعمال محل خلاف؛ هذه الحاسبة للمدخر وما ثبتت زكاته لديك. إذا لم يبلغ المعدن وحده النصاب فقد تجب الزكاة عند ضمه لأموال أخرى وفق مرجعك.";
                 break;
             case 2:
                 var mode = Choice("trade", "طريقة الحساب", ["عروض تجارة أو أسهم معدّة للتداول", "أسهم استثمار · زكاة السهم المعلنة"]);
                 Field("goods", "قيمة البضائع والأسهم والعقارات المعدّة للبيع"); Field("cash", "النقد والديون المرجوّة التحصيل"); Field("debts", "التزامات حالّة يجوز خصمها (اختياري)"); NisabFields();
                 Field("shares", "عدد أسهم الاستثمار (للخيار الثاني فقط)"); Field("perShare", "الزكاة المستحقة لكل سهم وفق إعلان الشركة");
-                mode.SelectedIndexChanged += (_, _) => { foreach (var id in new[] { "goods", "cash", "debts", "price" }) ((View)_fields[id].Parent!).IsVisible = mode.SelectedIndex == 0; foreach (var id in new[] { "shares", "perShare" }) ((View)_fields[id].Parent!).IsVisible = mode.SelectedIndex == 1; ((View)_choices["nisab"].Parent!).IsVisible = mode.SelectedIndex == 0; };
-                ((View)_fields["shares"].Parent!).IsVisible = ((View)_fields["perShare"].Parent!).IsVisible = false;
+                mode.SelectedIndexChanged += (_, _) => { foreach (var id in new[] { "goods", "cash", "debts", "price" }) ((View)_fields[id].Parent!.Parent!).IsVisible = mode.SelectedIndex == 0; foreach (var id in new[] { "shares", "perShare" }) ((View)_fields[id].Parent!.Parent!).IsVisible = mode.SelectedIndex == 1; ((View)_choices["nisab"].Parent!).IsVisible = mode.SelectedIndex == 0; };
+                ((View)_fields["shares"].Parent!.Parent!).IsVisible = ((View)_fields["perShare"].Parent!.Parent!).IsVisible = false;
                 _note.Text = "التجارة تُقوّم بسعر يوم الزكاة، دون أصول التشغيل. العقار المعد للبيع يدخل هنا؛ المؤجّر لا تدخل قيمته، وإنما المدخر من ريعه ضمن الأموال. أسهم الاستثمار تُحسب من مقدار زكاة السهم الموثّق؛ لا تستخدم السعر السوقي تلقائيًا، ولا تكرر زكاة أدّتها الشركة عنك. إن لم يُعلن المقدار فاسأل مختصًا.";
                 break;
             case 3:
                 Field("kg", "كمية المحصول الزكوي بعد التجفيف والتنقية (كجم)");
                 var harvestChoice = Choice("harvestNisab", "تقدير النصاب بالكيلوجرام", ["612 كجم · دار الإفتاء المصرية", "وزن آخر معتمد للمحصول لدى مرجعك"]);
-                Field("customKg", "وزن النصاب المعتمد للمحصول (للخيار الثاني)"); ((View)_fields["customKg"].Parent!).IsVisible = false;
-                harvestChoice.SelectedIndexChanged += (_, _) => ((View)_fields["customKg"].Parent!).IsVisible = harvestChoice.SelectedIndex == 1;
+                Field("customKg", "وزن النصاب المعتمد للمحصول (للخيار الثاني)"); ((View)_fields["customKg"].Parent!.Parent!).IsVisible = false;
+                harvestChoice.SelectedIndexChanged += (_, _) => ((View)_fields["customKg"].Parent!.Parent!).IsVisible = harvestChoice.SelectedIndex == 1;
                 Choice("irrigation", "طريقة الري", ["بلا كلفة · 10٪", "بكلفة وآلة · 5٪", "بالتساوي بين الطريقتين · 7.5٪"]);
                 Field("kgPrice", "سعر الكيلوجرام (اختياري لإظهار القيمة)");
                 _source = "https://www.dar-alifta.org/ar/Fatwa/Details/13476";
@@ -116,7 +119,7 @@ public sealed class ZakatPage : ContentPage
     private decimal Number(string id, bool optional = false)
     {
         var value = NumberInput.Normalize(_fields[id].Text ?? "").Trim();
-        if (!optional && value.Length == 0) { _fields[id].Focus(); throw new ArgumentException("أكمل الحقل الفارغ: " + ((VerticalStackLayout)_fields[id].Parent!).Children.OfType<Label>().First().Text); }
+        if (!optional && value.Length == 0) { _fields[id].Focus(); throw new ArgumentException("أكمل الحقل الفارغ: " + ((VerticalStackLayout)_fields[id].Parent!.Parent!).Children.OfType<Label>().First().Text); }
         if (optional && value.Length == 0) return 0;
         if (!decimal.TryParse(value, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var n) || n < 0 || n > 1_000_000_000_000m) throw new ArgumentException("أدخل أرقامًا موجبة صحيحة دون فواصل آلاف، وبفاصل عشري نقطة أو ٫");
         return n;

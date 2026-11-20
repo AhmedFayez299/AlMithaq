@@ -34,7 +34,7 @@
 		<ApplicationId>com.companyname.almithaq</ApplicationId>
 
 		<!-- Versions -->
-		<ApplicationDisplayVersion>1.1.5</ApplicationDisplayVersion>
+		<ApplicationDisplayVersion>1.1.7</ApplicationDisplayVersion>
 		<ApplicationVersion>1</ApplicationVersion>
 
 		<!-- To develop, package, and publish an app to the Microsoft Store, see: https://aka.ms/MauiTemplateUnpackaged -->
@@ -69,7 +69,7 @@
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net10.0-android|AnyCPU'">
 	  <ApplicationId>com.companyname.almithaq</ApplicationId>
-	  <ApplicationVersion>9</ApplicationVersion>
+	  <ApplicationVersion>11</ApplicationVersion>
 	  <AndroidPackageFormats>aab;apk</AndroidPackageFormats>
 	  <AndroidLinkTool>r8</AndroidLinkTool>
 	  <AndroidR8ObfuscationMode>private-members</AndroidR8ObfuscationMode>
@@ -114,13 +114,15 @@
 
 	<ItemGroup>
 		<!-- App Icon -->
-        <MauiIcon Include="Resources\AppIcon\mithaqmark.svg" Color="#123F34" ForegroundScale="0.8" />
+        <MauiIcon Include="Resources\AppIcon\mithaqmark.svg" ForegroundFile="Resources\AppIcon\mithaqforeground.png" Color="#123F34" ForegroundScale="0.52" />
 
 		<!-- Splash Screen -->
-        <MauiSplashScreen Include="Resources\Splash\mithaqsplash.svg" Color="#123F34" BaseSize="160,160" />
+        <MauiSplashScreen Include="Resources\Splash\mithaqsplash_new.png" Color="#123F34" BaseSize="160,160" />
 		
 		<!-- Images -->
 		<MauiImage Include="Resources\Images\*" />
+        <MauiImage Remove="Resources\Images\home_prayer.png" />
+        <MauiImage Update="Resources\Images\mithaqlogo.png" Resize="True" BaseSize="256,256" />
         <MauiImage Update="Resources\Images\home_welcome.svg" BaseSize="360,137" />
 		
 		<!-- Custom Fonts -->
@@ -128,10 +130,11 @@
         <MauiFont Remove="Resources\Fonts\OpenSans-Semibold.ttf;Resources\Fonts\Font Awesome 6 Brands-Regular-400.otf;Resources\Fonts\Font Awesome 6 Free-Regular-400.otf" />
 
 		<!-- Raw Assets (also remove the "Resources\Raw" prefix) -->
-		<BundleResource Include="Platforms/Android/Resources/raw/adhan_ali_mulla.mp3;Platforms/Android/Resources/raw/adhan_haddad.m4a;Platforms/Android/Resources/raw/salawat_reminder.m4a" LogicalName="%(Filename)%(Extension)" Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'" />
+		<BundleResource Include="Platforms/Android/Resources/raw/adhan_ali_mulla.mp3;Platforms/Android/Resources/raw/adhan_haddad.m4a;Platforms/Android/Resources/raw/adhan_naser.m4a;Platforms/Android/Resources/raw/salawat_reminder.m4a" LogicalName="%(Filename)%(Extension)" Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'" />
         <BundleResource Include="Platforms/iOS/Resources/*_notice.caf" LogicalName="%(Filename)%(Extension)" Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'" />
         <MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
         <MauiAsset Remove="Resources\Raw\mushaf\pages\**" />
+        <MauiAsset Remove="Resources\Raw\home_design.png;Resources\Raw\home_banner.png;Resources\Raw\home_banner_qiyam.png" />
 	</ItemGroup>
 
 	<ItemGroup>

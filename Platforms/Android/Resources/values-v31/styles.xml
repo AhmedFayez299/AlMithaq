@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<resources>
+  <style name="AlMithaq.StartTheme" parent="Maui.MainTheme.NoActionBar">
+    <item name="android:windowBackground">@drawable/almithaq_start_logo</item>
+    <item name="android:windowSplashScreenBackground">#123F34</item>
+    <item name="android:windowSplashScreenAnimatedIcon">@drawable/almithaq_start_safe_icon</item>
+    <item name="android:windowSplashScreenAnimationDuration">0</item>
+  </style>
+</resources>

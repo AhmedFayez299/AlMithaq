@@ -25,21 +25,18 @@ public partial class QiblaPage : ContentPage
         _compass = new GraphicsView { Drawable = _dial, HeightRequest = 268, HorizontalOptions = LayoutOptions.Fill, FlowDirection = FlowDirection.LeftToRight };
         _angle.HorizontalTextAlignment = _alignment.HorizontalTextAlignment = TextAlignment.Center;
         Ui.ThemeProperty(_status, Label.TextColorProperty, "AppMuted");
-        var title = Ui.Label("وجهتك إلى البيت الحرام", 17, true);
-        var art = new Image { Source = "scene_qibla.png", WidthRequest = 48, HeightRequest = 48 };
-        var heading = new Grid { ColumnDefinitions = { new(GridLength.Star), new(48) }, ColumnSpacing = 10 }; title.VerticalOptions = LayoutOptions.Center; heading.Add(title); heading.Add(art, 1);
-        var statusRow = new Grid { ColumnDefinitions = { new(GridLength.Star), new(GridLength.Star) }, ColumnSpacing = 8 };
-        foreach (var label in new[] { _locationState, _sensorState }) { label.HorizontalTextAlignment = TextAlignment.Center; Ui.ThemeProperty(label, Label.TextColorProperty, "AppMuted"); }
-        statusRow.Add(_locationState); statusRow.Add(_sensorState, 1);
-        var guide = Ui.Label("أعلى الهاتف هو اتجاه نظرك", 12); guide.HorizontalTextAlignment = TextAlignment.Center; Ui.ThemeProperty(guide, Label.TextColorProperty, "AppMuted");
-        var dialBody = Ui.Stack(statusRow, _compass, _angle, _alignment, guide); dialBody.Spacing = 6;
-        var compassCard = Ui.Card(dialBody); compassCard.Padding = new Thickness(12, 14, 12, 18);
-        var actions = new Grid { ColumnDefinitions = { new(GridLength.Star), new(48) }, ColumnSpacing = 8 };
-        var start = Ui.AsyncButton("تحديث الموقع والبوصلة", StartAsync); start.FontSize = 12;
-        actions.Add(start); actions.Add(Ui.Icon("\uf013", "إعداد الموقع يدويًا", () => _navigator.GoToAsync("//settings")), 1);
-        var tips = Ui.Label("أمسك الهاتف أفقيًا، بعيدًا عن المعادن. للمعايرة حرّكه بشكل 8. تعتمد دقة الاتجاه على حساس جهازك.", 11); Ui.ThemeProperty(tips, Label.TextColorProperty, "AppMuted");
-        var stack = Ui.Stack(heading, compassCard, _status, actions, Ui.Card(Ui.Stack(Ui.Label("للحصول على قراءة أدق", 12, true), tips)));
-        stack.Spacing = 6; stack.Padding = new Thickness(16, 10, 16, 24); Content = new ScrollView { Content = stack };
+        var statusRow = new Grid { ColumnDefinitions = { new(GridLength.Star),new(GridLength.Star) },ColumnSpacing = 8 };
+        foreach (var label in new[] { _locationState,_sensorState }) { label.FontSize = 11; label.MaxLines = 2; Ui.ThemeProperty(label,Label.TextColorProperty,"AppMuted"); }
+        statusRow.Add(ScreenDesign.Pill(_locationState)); statusRow.Add(ScreenDesign.Pill(_sensorState),1);
+        var guide = Ui.Label("أعلى الهاتف هو اتجاه نظرك",11); guide.HorizontalTextAlignment = TextAlignment.Center; Ui.ThemeProperty(guide,Label.TextColorProperty,"AppMuted");
+        _angle.FontSize = 18; _alignment.FontSize = 13;
+        var dialBody = Ui.Stack(statusRow,_compass,_angle,_alignment,guide); dialBody.Spacing = 7;
+        var compassCard = ScreenDesign.Surface(dialBody,new Thickness(12,14,12,18));
+        var actions = new Grid { ColumnDefinitions = { new(GridLength.Star),new(48) },ColumnSpacing = 8 };
+        actions.Add(Ui.AsyncButton("تحديث الموقع والبوصلة",StartAsync)); actions.Add(Ui.Icon("\uf013","الموقع وطريقة الحساب",()=>_navigator.GoToAsync("settings")),1);
+        var tips = Ui.AsyncButton("إرشادات الحصول على قراءة أدق",()=>PopupSheet.AlertAsync(this,"قراءة أدق للبوصلة","أمسك الهاتف أفقيًا، بعيدًا عن المعادن. للمعايرة حرّكه بشكل 8. تعتمد الدقة على حساس الجهاز، وتظهر إشارة خضراء عند محاذاة القبلة تقريبًا.","فهمت"),true);
+        var stack = Ui.Stack(ScreenDesign.Intro("وجهتك إلى البيت الحرام","اتبع السهم حتى تتوافق مع اتجاه القبلة", "\uf14e"),compassCard,actions,_status,tips);
+        stack.Spacing = 9; stack.Padding = new Thickness(16,12,16,24); Content = new ScrollView { Content = stack };
     }
     protected override void OnAppearing()
     {
@@ -74,7 +71,7 @@ public partial class QiblaPage : ContentPage
         _status.Text = "السهم تقريبي: قراءة الحساس مغناطيسية. استخدم الزاوية الرقمية مع الشمال الحقيقي للتحقق.";
 #endif
         _angle.Text = $"القبلة {_bearing:F1}° من الشمال الحقيقي";
-        _dial.Bearing = _bearing; _dial.HasLocation = true; _locationState.Text = "الموقع · محدد"; _compass.Invalidate();
+        _dial.Bearing = _bearing; _dial.HasLocation = true; _locationState.Text = location.Description; _compass.Invalidate();
     }
     private void StartSensor()
     {
@@ -113,8 +110,18 @@ public sealed class CompassDial : IDrawable
         var aligned = QiblaMath.IsAligned(Bearing, Heading, HasLocation, HasHeading);
         var accent = !ready ? Color.FromArgb("#96A79E") : aligned ? Color.FromArgb("#36B67B") : Ui.Gold;
         var heading = HasHeading ? Heading : 0;
-        canvas.FillColor = AppAppearance.IsDark ? Color.FromArgb("#203A31") : Color.FromArgb("#F5F3EA");
-        canvas.FillCircle(cx, cy, radius);
+        var bounds = new RectF(cx-radius-9,cy-radius-9,(radius+9)*2,(radius+9)*2);
+        canvas.SetShadow(new SizeF(0,5),10,Colors.Black.WithAlpha(.24f));
+        canvas.FillColor = Color.FromArgb("#153D32"); canvas.FillCircle(cx,cy,radius+9); canvas.SetShadow(SizeF.Zero,0,Colors.Transparent);
+        canvas.SaveState();
+        canvas.SetFillPaint(new LinearGradientPaint { StartColor=Color.FromArgb("#F5E6B1"),EndColor=Color.FromArgb("#80632F"),StartPoint=new Point(0,0),EndPoint=new Point(1,1) },bounds);
+        canvas.FillCircle(cx,cy,radius+7); canvas.RestoreState();
+        canvas.StrokeColor=Color.FromArgb("#FFF4CE").WithAlpha(.6f); canvas.StrokeSize=.8f; canvas.DrawCircle(cx,cy-1,radius+6);
+        var face = new RectF(cx-radius,cy-radius,radius*2,radius*2);
+        canvas.SaveState();
+        canvas.SetFillPaint(new RadialGradientPaint { StartColor=Color.FromArgb(AppAppearance.IsDark ? "#315548" : "#FFFDF4"),EndColor=Color.FromArgb(AppAppearance.IsDark ? "#102B22" : "#DFD8C6"),Center=new Point(.38,.3),Radius=.8 },face);
+        canvas.FillCircle(cx,cy,radius); canvas.RestoreState();
+        canvas.StrokeColor = Colors.Black.WithAlpha(.14f); canvas.StrokeSize = 2; canvas.DrawCircle(cx,cy+1,radius-1);
         canvas.StrokeColor = accent.WithAlpha(aligned ? .28f : .13f); canvas.StrokeSize = aligned ? 9 : 6; canvas.DrawCircle(cx, cy, radius + 3);
         canvas.StrokeColor = accent; canvas.StrokeSize = 1.3f; canvas.DrawCircle(cx, cy, radius);
         canvas.StrokeColor = Ui.Gold.WithAlpha(.25f); canvas.StrokeSize = .7f; canvas.DrawCircle(cx, cy, radius - 39);
@@ -144,7 +151,9 @@ public sealed class CompassDial : IDrawable
         {
             var path = new PathF(); path.MoveTo(ax, ay); path.LineTo(bx, by); path.LineTo(dx, dy); path.Close(); canvas.FillColor = fill; canvas.FillPath(path);
         }
+        canvas.SetShadow(new SizeF(2,3),5,Colors.Black.WithAlpha(.3f));
         Triangle(tipX, tipY, cx + px, cy + py, cx, cy, accent);
+        canvas.SetShadow(SizeF.Zero,0,Colors.Transparent);
         Triangle(tipX, tipY, cx, cy, cx - px, cy - py, accent.WithAlpha(.65f));
         var tail = AppAppearance.IsDark ? Color.FromArgb("#567366") : Color.FromArgb("#CBD6CC");
         Triangle(tailX, tailY, cx + px, cy + py, cx, cy, tail);

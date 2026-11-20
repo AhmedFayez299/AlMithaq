@@ -14,6 +14,9 @@ public partial class QuranPage : ContentPage
     private readonly QuranMediaService _media;
     private QuranDocument? _document;
     private Button? _downloadSurah;
+    private readonly Label _playerSurah=Ui.Label("القرآن الكريم",12,true), _playerReciter=Ui.Label("",11);
+    private readonly Label _playerNotice=Ui.Label("",11);
+    private bool _choosingReciter;
     private readonly Grid _readingArea = new();
     private Grid _readerLayout = null!;
     private Grid? _playbackSheet;
@@ -113,6 +116,7 @@ public partial class QuranPage : ContentPage
             Preferences.Set("reader.frame.style", frameStyle.SelectedIndex);
             await _mushaf.SetFrameStyleAsync(frameStyle.SelectedIndex);
         });
+        foreach (var picker in new[] { _chapter, _reciter, _mode, _theme, _repeat, frameStyle }) picker.OwnerPage = this;
         _settingsSheet = new(_mode, _theme, _font, _zoom, _reciter, _repeat, _follow, _continuous, DownloadAsync, CanDownloadCurrent, frameStyle);
         _chapter.WidthRequest = -1; _chapter.HorizontalOptions = LayoutOptions.Fill;
         _search.IsVisible = false;
@@ -127,22 +131,28 @@ public partial class QuranPage : ContentPage
         }), 1);
         title.Add(Ui.Icon("\uf1de", "إعدادات القراءة والصوت", _settingsSheet.ShowAsync), 2);
         var toolbar = new Grid { ColumnDefinitions = { new(GridLength.Auto), new(GridLength.Auto), new(GridLength.Star), new(GridLength.Auto), new(GridLength.Auto), new(GridLength.Auto) } };
-        toolbar.Add(Ui.Icon("\uf053", "القسم السابق", () => MoveAsync(-1)), 0);
-        toolbar.Add(Ui.Icon("\uf054", "القسم التالي", () => MoveAsync(1)), 1);
+        toolbar.Add(Ui.Icon("\uf054", "القسم السابق", () => MoveAsync(-1)), 0);
+        toolbar.Add(Ui.Icon("\uf053", "القسم التالي", () => MoveAsync(1)), 1);
         toolbar.Add(_status, 2); _status.VerticalOptions = LayoutOptions.Center; _status.HorizontalTextAlignment = TextAlignment.Center;
         toolbar.Add(Ui.Icon("\uf05b", "الانتقال إلى آية أو صفحة", JumpAsync), 3);
         toolbar.Add(Ui.Icon("\uf02e", "العلامات المحفوظة", BookmarksAsync), 4);
         toolbar.Add(Ui.Icon("\uf1da", "آخر قراءة", ResumeAsync), 5);
         var top = Ui.Stack(title, _search, toolbar); top.Padding = new Thickness(10, 0); top.Spacing = 0;
         _playToggle = Ui.Icon("\uf04b", "تشغيل أو إيقاف التلاوة مؤقتًا", TogglePlaybackAsync, true);
-        var playback = new Grid { ColumnDefinitions = { new(GridLength.Star), new(GridLength.Auto), new(GridLength.Auto), new(GridLength.Auto), new(GridLength.Star) }, ColumnSpacing = 6, FlowDirection = FlowDirection.LeftToRight };
-        _downloadSurah = Ui.Icon("\uf019", "تنزيل تلاوة السورة", DownloadAsync); playback.Add(_downloadSurah, 0);
-        playback.Add(Ui.Icon("\uf048", "الآية السابقة", () => StepAudioAsync(-1)), 1);
-        playback.Add(_playToggle, 2);
-        playback.Add(Ui.Icon("\uf051", "الآية التالية", () => StepAudioAsync(1)), 3);
-        playback.Add(Ui.Icon("\uf04d", "إيقاف التلاوة", () => { StopPlayback("user stop"); return Task.CompletedTask; }), 4);
-        playback.ColumnDefinitions.Add(new(GridLength.Auto));
-        playback.Add(Ui.Icon("\uf013", "إعدادات تشغيل المقطع", PlaybackSettingsAsync), 5);
+        var playback = new Grid { ColumnDefinitions = { new(GridLength.Star),new(GridLength.Star),new(GridLength.Star),new(GridLength.Star),new(48),new(GridLength.Star),new(GridLength.Star) },ColumnSpacing=3,FlowDirection=FlowDirection.LeftToRight };
+        var settingsButton=Ui.Icon("\uf013","إعدادات تشغيل المقطع",PlaybackSettingsAsync);
+        _downloadSurah=Ui.Icon("\uf019","تنزيل تلاوة السورة",DownloadAsync);
+        var previousButton=Ui.Icon("\uf048","الآية السابقة",()=>StepAudioAsync(-1));
+        var nextButton=Ui.Icon("\uf051","الآية التالية",()=>StepAudioAsync(1));
+        var stopButton=Ui.Icon("\uf04d","إيقاف التلاوة",()=> { StopPlayback("user stop");return Task.CompletedTask; });
+        foreach(var button in new[]{settingsButton,_downloadSurah,previousButton,nextButton,stopButton})
+        { button.WidthRequest=-1;button.MinimumWidthRequest=32;button.HeightRequest=button.MinimumHeightRequest=44;button.FontSize=17;button.Padding=0; }
+        playback.Add(settingsButton);playback.Add(_downloadSurah,1);playback.Add(previousButton,3);playback.Add(nextButton,5);playback.Add(stopButton,6);
+        _playToggle.WidthRequest=_playToggle.HeightRequest=_playToggle.MinimumWidthRequest=_playToggle.MinimumHeightRequest=44;
+        _playToggle.BackgroundColor=Colors.Transparent;_playToggle.FontSize=21;
+        var playRing=new Border { Content=_playToggle,WidthRequest=48,HeightRequest=48,Padding=1,Stroke=new SolidColorBrush(Ui.Gold),StrokeThickness=1.1,StrokeShape=new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius=24 },VerticalOptions=LayoutOptions.Center };
+        playRing.Background=new LinearGradientBrush(new GradientStopCollection { new(Color.FromArgb("#328B70"),0),new(Color.FromArgb("#0A4936"),.6f),new(Color.FromArgb("#073C2D"),1) },new Point(0,0),new Point(1,1));
+        playRing.Shadow=new Shadow { Brush=Colors.Black,Opacity=.2f,Radius=4,Offset=new Point(0,2) };playback.Add(playRing,4);
         var timeline = new Grid { ColumnDefinitions = { new(GridLength.Auto), new(GridLength.Star), new(GridLength.Auto) }, FlowDirection = FlowDirection.LeftToRight, ColumnSpacing = 6 };
         timeline.Add(_elapsed); timeline.Add(_seek, 1); timeline.Add(_duration, 2);
         _playing.HorizontalTextAlignment = TextAlignment.Center;
@@ -165,18 +175,27 @@ public partial class QuranPage : ContentPage
             _player.Volume = e.NewValue;
 #endif
         };
-        var nowPlaying = new Grid { ColumnDefinitions = { new(GridLength.Star), new(GridLength.Auto) } };
-        nowPlaying.Add(_playing); _playing.FontSize = 12; _playing.MaxLines = 1; _playing.VerticalOptions = LayoutOptions.Center;
-        nowPlaying.Add(Ui.Icon("\uf028", "مستوى صوت التلاوة", () => { volume.Value = MediaVolume.Current; volumeRow.IsVisible = !volumeRow.IsVisible; return Task.CompletedTask; }), 1);
-        nowPlaying.Remove(_playing); var info = Ui.Stack(_playing, timeline); info.Spacing = 0; nowPlaying.Add(info);
-        var panelContent = Ui.Stack(nowPlaying, playback, downloadProgress); panelContent.Spacing = 0;
-        timeline.HeightRequest = 22; _playToggle.WidthRequest = _playToggle.HeightRequest = 48;
-#if IOS
-        _playToggle.CornerRadius = 24;
-#endif
-        var playerPanel = Ui.Card(panelContent);
-        playerPanel.Padding = new Thickness(10, 0); playerPanel.Margin = new Thickness(8, 0, 8, 3);
-        var bottom = Ui.Stack(playerPanel); bottom.Spacing = 0;
+        var volumeButton=Ui.Icon("\uf028","مستوى صوت التلاوة",()=> { volume.Value=MediaVolume.Current;volumeRow.IsVisible=!volumeRow.IsVisible;return Task.CompletedTask; });
+        volumeButton.WidthRequest=-1;volumeButton.MinimumWidthRequest=32;volumeButton.HeightRequest=volumeButton.MinimumHeightRequest=44;volumeButton.FontSize=17;volumeButton.Padding=0;
+        playback.Add(volumeButton,2);
+        foreach(var column in new[]{2,5})playback.Add(new BoxView { Color=Ui.Gold.WithAlpha(.5f),WidthRequest=.7,HeightRequest=22,HorizontalOptions=LayoutOptions.End,VerticalOptions=LayoutOptions.Center,InputTransparent=true },column);
+        var changeReader=Ui.AsyncButton("تغيير القارئ",async()=> { await SelectReciterAsync(true); });
+        changeReader.FontSize=10;changeReader.Padding=new Thickness(5,2);changeReader.MinimumHeightRequest=changeReader.HeightRequest=34;changeReader.CornerRadius=17;
+        changeReader.Shadow=new Shadow { Brush=Colors.Black,Opacity=.12f,Radius=3,Offset=new Point(0,1) };
+        changeReader.BorderWidth=.7;changeReader.BorderColor=Ui.Gold;changeReader.HorizontalOptions=LayoutOptions.Fill;
+        changeReader.ImageSource=new FontImageSource { FontFamily="FontIconSolid",Glyph="\uf078",Size=9,Color=Colors.White };
+        changeReader.ContentLayout=new Button.ButtonContentLayout(Button.ButtonContentLayout.ImagePosition.Left,3);
+        SemanticProperties.SetDescription(changeReader,"تغيير قارئ التلاوة");
+        var heading=new Grid { FlowDirection=FlowDirection.RightToLeft,ColumnDefinitions={new(new GridLength(1.05,GridUnitType.Star)),new(1),new(new GridLength(1.25,GridUnitType.Star)),new(91)},ColumnSpacing=6 };
+        foreach(var label in new[]{_playerSurah,_playerReciter}) { label.FontSize=11;label.MaxLines=1;label.LineBreakMode=LineBreakMode.TailTruncation;label.VerticalTextAlignment=TextAlignment.Center; }
+        heading.Add(_playerSurah);heading.Add(new BoxView { Color=Ui.Gold.WithAlpha(.6f),WidthRequest=1,HeightRequest=17,VerticalOptions=LayoutOptions.Center },1);heading.Add(_playerReciter,2);heading.Add(changeReader,3);
+        timeline.HeightRequest=18;_seek.HeightRequest=18;_elapsed.FontSize=_duration.FontSize=10;_elapsed.VerticalTextAlignment=_duration.VerticalTextAlignment=TextAlignment.Center;
+        _seek.ThumbColor=Ui.Gold;
+        _playerNotice.IsVisible=false;_playerNotice.MaxLines=2;
+        var panelContent=Ui.Stack(heading,timeline,playback,downloadProgress,_playerNotice);panelContent.Spacing=0;
+        var playerPanel=new RecitationCard(panelContent);
+        _playing.PropertyChanged+=(_,e)=> { if(e.PropertyName==nameof(Label.Text)) { UpdatePlayerHeader();var message=_playing.Text??"";_playerNotice.IsVisible=message.StartsWith("تعذر")||message.StartsWith("هذه التلاوة");_playerNotice.Text=_playerNotice.IsVisible?message:"";SemanticProperties.SetDescription(playerPanel,message); } };
+        var bottom=Ui.Stack(playerPanel);bottom.Spacing=0;
         var grid = new Grid { ClassId = "choice-host", RowDefinitions = { new(GridLength.Auto), new(GridLength.Star), new(GridLength.Auto) } };
         var readingArea = _readingArea; readingArea.Add(_list); readingArea.Add(_mushaf); readingArea.Add(volumeRow);
         readingArea.SizeChanged += (_, _) => HideVerseBar();
@@ -221,19 +240,8 @@ public partial class QuranPage : ContentPage
             ApplyTheme();
         };
         _font.ValueChanged += (_, _) => Preferences.Set("reader.text-font", _font.Value);
-        _reciter.SelectionProvider = async () =>
-        {
-            _settingsSheet.Hide(); HideVerseBar();
-            _returningModal = true;
-            var choice = await AlMithaq.Features.Quran.Views.ReciterSelectionPage.ShowAsync(this, ReciterId, _document?.Chapters[Math.Max(0, _chapter.SelectedIndex)].Verses ?? [], _media);
-            if (choice is null) return null;
-            var index = Array.FindIndex(QuranMediaService.Reciters, r => r.Id == choice.Id);
-            if (index < 0) return null;
-            _reciter.SelectedIndex = index;
-            if (choice.Download) await DownloadAsync();
-            return index;
-        };
-        _reciter.SelectedIndexChanged += (_, _) => { StopPlayback("reciter changed"); Preferences.Set("reader.reciter.id", ReciterId); UpdateDownloadButton(); };
+        _reciter.SelectionProvider = () => SelectReciterAsync(false);
+        _reciter.SelectedIndexChanged += (_, _) => { StopPlayback("reciter changed"); Preferences.Set("reader.reciter.id",ReciterId);UpdateDownloadButton();UpdatePlayerHeader(); };
         _search.TextChanged += async (_, e) => { if (!_changing) await SearchAsync(e.NewTextValue ?? ""); };
         _list.Scrolled += (_, e) =>
         {
@@ -362,21 +370,22 @@ public partial class QuranPage : ContentPage
         ClosePlaybackSheet();
         HideVerseBar(); _settingsSheet.Hide();
         DeviceDisplay.Current.KeepScreenOn = false;
+        SetSystemBars(false);
         _active = false; StopPlayback("reader disappeared"); _mushaf.CancelPending(); _lifetime?.Cancel(); _searchCancellation?.Cancel(); _download?.Cancel(); base.OnDisappearing();
     }
     private async Task GuardAsync(Func<Task> action)
     {
         try { await action(); } catch (OperationCanceledException) { }
-        catch (Exception ex) { System.Diagnostics.Debug.WriteLine(ex); if (_active) await DisplayAlertAsync("تعذر إتمام العملية", "تحقق من الاتصال أو أعد فتح الشاشة للمحاولة مجددًا.", "حسنًا"); }
+        catch (Exception ex) { System.Diagnostics.Debug.WriteLine(ex); if (_active) await PopupSheet.AlertAsync(this, "تعذر إتمام العملية", "تحقق من الاتصال أو أعد فتح الشاشة للمحاولة مجددًا.", "حسنًا"); }
     }
     private void ApplyTheme()
     {
         var dark = _theme.SelectedIndex == 2;
         Resources["ReaderInk"] = dark ? Color.FromArgb("#ECE5D4") : Ui.Ink;
-        Resources["ReaderMuted"] = dark ? Color.FromArgb("#B6C8BF") : Color.FromArgb("#5A7067");
-        Resources["ReaderCard"] = dark ? Color.FromArgb("#1F3430") : _theme.SelectedIndex == 0 ? Color.FromArgb("#FFFCF2") : Colors.White;
-        Resources["ReaderStroke"] = new SolidColorBrush(dark ? Color.FromArgb("#42564F") : Color.FromArgb("#E4DFD0"));
-        _list.BackgroundColor = dark ? Color.FromArgb("#132622") : Ui.Paper;
+        Resources["ReaderMuted"] = Application.Current!.Resources["AppMuted"];
+        Resources["ReaderCard"] = Application.Current!.Resources["AppCard"];
+        Resources["ReaderStroke"] = Application.Current!.Resources["AppStrokeBrush"];
+        _list.BackgroundColor = Ui.Paper;
         foreach (var row in _rows) row.Night = dark;
         void Recolor(IVisualTreeElement parent)
         {
@@ -423,10 +432,10 @@ public partial class QuranPage : ContentPage
         if (_mushaf.IsVisible)
         {
             _status.Text = $"{_document.Chapters[anchor.Surah - 1].Name} · صفحة {ReadingPage(anchor)}";
-            var highlighted = preserveAudio && _current is not null ? _current : anchor;
-            _ = _mushaf.ShowAsync(ReadingPage(anchor), highlighted.Surah, highlighted.Ayah);
+            var highlighted = preserveAudio && _sequence ? _current : null;
+            _ = _mushaf.ShowAsync(ReadingPage(anchor), highlighted?.Surah ?? 0, highlighted?.Ayah ?? 0);
         }
-        UpdateDownloadButton();
+        UpdateDownloadButton();UpdatePlayerHeader();
         _store.SavePosition(anchor);
         if (_list.IsVisible) Dispatcher.Dispatch(() => _list.ScrollTo(Math.Max(0, _shown.FindIndex(v => v.Number == anchor.Number)), position: ScrollToPosition.Start, animate: false));
     }
@@ -438,7 +447,7 @@ public partial class QuranPage : ContentPage
     }
     private Task ResumeAsync()
     {
-        if (_document is not null) { _changing = true; _mode.SelectedIndex = 3; _changing = false; var pos = _store.GetPosition(); ClearSearch(); Show(All.FirstOrDefault(v => v.Surah == pos?.Surah && v.Ayah == pos?.Ayah) ?? All.First()); }
+        if (_document is not null) { _changing = true; _mode.SelectedIndex = 3; _changing = false; var pos = _store.GetPosition(); ClearSearch(); Show(All.FirstOrDefault(v => v.Surah == pos?.Surah && v.Ayah == pos?.Ayah) ?? All.First()); SetChrome(false); }
         return Task.CompletedTask;
     }
     private Task MoveAsync(int delta)
@@ -464,7 +473,7 @@ public partial class QuranPage : ContentPage
             v => _printedPages is not null ? _printedPages[v.Key] : v.Page, _store.GetBookmarks(), _quarters,
             verse =>
             {
-                if (_index?.Children.OfType<SearchBar>().FirstOrDefault() is { } search) DismissKeyboard(search);
+                if (_index?.Search is { } search) DismissKeyboard(search);
                 OpenVerseInMushaf(verse);
             }, resume);
         Content = _index;
@@ -474,6 +483,20 @@ public partial class QuranPage : ContentPage
         _changing = true; _mode.SelectedIndex = 3; _changing = false;
         ClearSearch(); Show(verse);
     }
+    private void SetSystemBars(bool immersive)
+    {
+        if (immersive && !_active) return;
+        SafeAreaEdges = immersive ? SafeAreaEdges.None : SafeAreaEdges.All;
+#if ANDROID
+        AlMithaq.Platforms.Android.ReaderPresentation.SetImmersive(immersive);
+#elif IOS
+        Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific.Page.SetPrefersStatusBarHidden(this,
+            immersive ? Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific.StatusBarHiddenMode.True
+                      : Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific.StatusBarHiddenMode.False);
+        Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific.Page.SetPrefersHomeIndicatorAutoHidden(this, immersive);
+#endif
+    }
+
     private void SetChrome(bool visible)
     {
         _chromeVisible = visible;
@@ -482,6 +505,8 @@ public partial class QuranPage : ContentPage
         if (!visible) { _settingsSheet.Hide(); _search.Unfocus(); }
 
         NavigationPage.SetHasNavigationBar(this, visible || !_readerOpen);
+        BottomNavigation.SetReaderTools(this, visible || !_readerOpen);
+        SetSystemBars(_readerOpen && !visible);
     }
 
     private async Task SearchAsync(string query)
@@ -496,7 +521,7 @@ public partial class QuranPage : ContentPage
     private async Task BookmarksAsync()
     {
         if (_document is null) return; var marks = _store.GetBookmarks();
-        if (marks.Count == 0) { await DisplayAlertAsync("العلامات", "احفظ علامة أو ملاحظة من خيارات أي آية.", "حسنًا"); return; }
+        if (marks.Count == 0) { await PopupSheet.AlertAsync(this, "العلامات", "احفظ علامة أو ملاحظة من خيارات أي آية.", "حسنًا"); return; }
         var labels = marks.Select((b, i) => $"{i + 1}. {_document.Chapters[b.Surah - 1].Name} · {b.Ayah} — {b.Note}").ToArray();
         var selected = await PopupSheet.ChooseAsync(this, "علاماتي", labels); var index = Array.IndexOf(labels, selected);
         if (index >= 0) { var b = marks[index]; ClearSearch(); Show(All.First(v => v.Surah == b.Surah && v.Ayah == b.Ayah)); }
@@ -541,10 +566,7 @@ public partial class QuranPage : ContentPage
         {
             case "استماع من هنا": _rangeEnd = null; await PlayAsync(v, true); break;
             case "تكرار مقطع للحفظ":
-                var input = await DisplayPromptAsync("تكرار مقطع", $"البداية {v.Ayah}. اكتب رقم آخر آية ثم اختر عدد التكرارات من الشريط.", "ابدأ", "إلغاء", initialValue: v.Ayah.ToString(), keyboard: Keyboard.Numeric);
-                if (int.TryParse(Digits(input ?? ""), out var end) && end >= v.Ayah && end <= _document.Chapters[v.Surah - 1].Verses.Count)
-                { _rangeStart = v; _rangeEnd = _document.Chapters[v.Surah - 1].Verses[end - 1].Number; await PlayAsync(v, true); }
-                else if (input is not null) await DisplayAlertAsync("مقطع غير صحيح", "يجب أن تكون النهاية بعد البداية أو مساوية لها، وداخل السورة نفسها.", "حسنًا");
+                await PlaybackSettingsAsync(v);
                 break;
             case "التفسير الميسر":
                 _status.Text = "جارٍ تحميل التفسير الميسر…";
@@ -558,7 +580,7 @@ public partial class QuranPage : ContentPage
                 break;
             case "حفظ علامة / ملاحظة":
                 var old = _store.GetBookmarks().FirstOrDefault(b => b.Surah == v.Surah && b.Ayah == v.Ayah);
-                var note = await DisplayPromptAsync("علامة وملاحظة", "ملاحظة اختيارية تُحفظ منفصلة عن القرآن", "حفظ", "إلغاء", initialValue: old?.Note ?? "", maxLength: 1000);
+                var note = await PopupSheet.PromptAsync(this, "علامة وملاحظة", "ملاحظة اختيارية تُحفظ منفصلة عن القرآن", "حفظ", "إلغاء", initialValue: old?.Note ?? "", maxLength: 1000);
                 if (note is not null) { _store.SaveBookmark(v, note); row.IsBookmarked = true; } break;
             case "حذف العلامة": _store.RemoveBookmark(v); row.IsBookmarked = false; break;
             case "نسخ الآية": await Clipboard.Default.SetTextAsync(ShareText(v)); _status.Text = "تم نسخ الآية ومرجعها"; break;
@@ -616,10 +638,11 @@ public partial class QuranPage : ContentPage
         await PlayAsync(start, true);
     }
 
-    private async Task PlaybackSettingsAsync()
+    private Task PlaybackSettingsAsync() => PlaybackSettingsAsync(null);
+    private async Task PlaybackSettingsAsync(QuranVerse? requested)
     {
         if (_document is null || _shown.Count == 0 || _playbackSheet is not null) return;
-        var anchor = _shown.FirstOrDefault(v => v.Number == _current?.Number) ?? _shown[0];
+        var anchor = requested ?? _shown.FirstOrDefault(v => v.Number == _current?.Number) ?? _shown[0];
         var chapters = _document.Chapters;
         var fromSurah = new ChoicePicker { Title = "سورة البداية", ItemsSource = chapters.ToArray(), SelectedIndex = anchor.Surah - 1 };
         var toSurah = new ChoicePicker { Title = "سورة النهاية", ItemsSource = chapters.ToArray(), SelectedIndex = anchor.Surah - 1 };
@@ -635,11 +658,11 @@ public partial class QuranPage : ContentPage
         fromSurah.SelectedIndexChanged += (_, _) => SetVerses(fromSurah, fromAyah, 0);
         toSurah.SelectedIndexChanged += (_, _) => SetVerses(toSurah, toAyah, chapters[toSurah.SelectedIndex].Verses.Count - 1);
         var counts = new[] { 1, 2, 3, 4, 5, 10, int.MaxValue };
-        var labels = counts.Select(n => n == int.MaxValue ? "بلا نهاية" : n.ToString()).ToArray();
-        var groupRepeats = new ChoicePicker { ItemsSource = labels, SelectedIndex = 0 };
-        var verseRepeats = new ChoicePicker { ItemsSource = labels, SelectedIndex = 0 };
+        var labels = counts.Select(n => n == int.MaxValue ? "بلا نهاية" : n == 1 ? "مرة واحدة" : n == 2 ? "مرتان" : $"{n} مرات").ToArray();
+        var groupRepeats = new ChoicePicker { Title = "تكرار المقطع", ItemsSource = labels, SelectedIndex = 0 };
+        var verseRepeats = new ChoicePicker { Title = "تكرار الآية", ItemsSource = labels, SelectedIndex = 0 };
         var speeds = new[] { .75, 1, 1.25, 1.5, 2 };
-        var speed = new ChoicePicker { ItemsSource = speeds.Select(n => $"{n:0.##}×").ToArray(), SelectedIndex = 1 };
+        var speed = new ChoicePicker { Title = "سرعة التلاوة", ItemsSource = speeds.Select(n => $"{n:0.##}×").ToArray(), SelectedIndex = 1 };
         var onlyRange = new Switch { IsToggled = true };
         var apply = Ui.AsyncButton("تطبيق وتشغيل", async () =>
         {
@@ -647,7 +670,7 @@ public partial class QuranPage : ContentPage
             var last = chapters[toSurah.SelectedIndex].Verses[toAyah.SelectedIndex];
             if (last.Number < first.Number)
             {
-                await DisplayAlertAsync("نطاق التلاوة", "اختر نهاية تأتي بعد البداية أو تساويها.", "حسنًا");
+                await PopupSheet.AlertAsync(this, "نطاق التلاوة", "اختر نهاية تأتي بعد البداية أو تساويها.", "حسنًا");
                 return;
             }
             ClosePlaybackSheet();
@@ -659,7 +682,7 @@ public partial class QuranPage : ContentPage
             _player.Speed = speeds[speed.SelectedIndex];
             await PlayAsync(first, true);
         });
-        foreach (var choice in new[] { fromSurah, fromAyah, toSurah, toAyah, groupRepeats, verseRepeats, speed }) choice.UseCompactLayout();
+        foreach (var choice in new[] { fromSurah, fromAyah, toSurah, toAyah, groupRepeats, verseRepeats, speed }) { choice.OwnerPage = this; choice.UseCompactLayout(); }
         Grid Pair(View first, View second, GridLength firstWidth, GridLength secondWidth)
         {
             var row = new Grid { ColumnSpacing = 8, ColumnDefinitions = { new(firstWidth), new(secondWidth) } };
@@ -694,7 +717,8 @@ public partial class QuranPage : ContentPage
         layout.Add(heading);
         layout.Add(new ScrollView { Content = controls }, 0, 1);
         layout.Add(apply, 0, 2);
-        var card = Ui.Card(layout);
+        var card = ScreenDesign.Surface(layout);
+        card.StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 26 };
         card.Padding = 12;
         card.HeightRequest = Math.Min(430, Math.Max(240, Height - 40));
         card.VerticalOptions = LayoutOptions.End;
@@ -767,7 +791,7 @@ public partial class QuranPage : ContentPage
             var token = _playbackToken;
             Dispatcher.Dispatch(() => { if (_active && _sequence && _follow.IsToggled && _playbackGate.IsCurrent(token)) _list.ScrollTo(index, position: ScrollToPosition.Start, animate: false); });
         }
-        _store.SavePosition(v); return Task.CompletedTask;
+        _store.SavePosition(v);UpdatePlayerHeader(); return Task.CompletedTask;
     }
     private async Task AdvanceAsync(long token)
     {
@@ -799,6 +823,48 @@ public partial class QuranPage : ContentPage
         if (next is null || (_rangeEnd is null && next.Surah != _current.Surah)) { StopPlayback("surah finished"); return; } await PlayAsync(next, false);
         }
         finally { _advancing = false; }
+    }
+    private void UpdatePlayerHeader()
+    {
+        var verse=_shown.FirstOrDefault(v=>v.Number==_current?.Number)??_shown.FirstOrDefault();
+        if(_document is not null && verse is not null)
+        {
+            var name=System.Text.RegularExpressions.Regex.Replace(_document.Chapters[verse.Surah-1].Name,@"[\u064B-\u065F\u0670]","").Replace('ٱ','ا');
+            _playerSurah.Text=$"{name} · آية {verse.Ayah}";
+        }
+        _playerReciter.Text=_reciter.SelectedItem?.ToString()??"اختر القارئ";
+        SemanticProperties.SetDescription(_playerSurah,_playerSurah.Text);SemanticProperties.SetDescription(_playerReciter,_playerReciter.Text);
+        ToolTipProperties.SetText(_playerSurah,_playerSurah.Text);ToolTipProperties.SetText(_playerReciter,_playerReciter.Text);
+    }
+    private async Task<int?> SelectReciterAsync(bool playSelected)
+    {
+        if(_document is null || _choosingReciter)return null;
+        _choosingReciter=true;
+        var anchor=_shown.FirstOrDefault(v=>v.Number==_current?.Number)??_shown.FirstOrDefault();
+        var wasPlaying=_sequence&&!_pauseRequested&&_player.CurrentState==MediaElementState.Playing;
+        var rangeStart=_rangeStart;var rangeEnd=_rangeEnd;var groupRepeats=_customRangeRepeats;var verseRepeats=_customVerseRepeats;var onlyRange=_onlySelectedRange;
+        try
+        {
+            _settingsSheet.Hide();HideVerseBar();_returningModal=true;
+            var verses=_document.Chapters[Math.Clamp((anchor?.Surah??1)-1,0,113)].Verses;
+            var choice=await AlMithaq.Features.Quran.Views.ReciterSelectionPage.ShowAsync(this,ReciterId,verses,_media);
+            if(choice is null)
+            {
+                if(wasPlaying&&anchor is not null&&_active) { OpenVerseInMushaf(anchor);SetChrome(true);await PlayAsync(anchor,true); }
+                return null;
+            }
+            var index=Array.FindIndex(QuranMediaService.Reciters,r=>r.Id==choice.Id);if(index<0)return null;
+            _reciter.SelectedIndex=index;UpdatePlayerHeader();
+            if(anchor is not null&&_active)
+            {
+                OpenVerseInMushaf(anchor);SetChrome(true);
+                _rangeStart=rangeStart;_rangeEnd=rangeEnd;_customRangeRepeats=groupRepeats;_customVerseRepeats=verseRepeats;_onlySelectedRange=onlyRange;
+                if(!choice.Download&&(playSelected||wasPlaying))await PlayAsync(anchor,true);
+            }
+            if(choice.Download)await DownloadAsync();
+            return index;
+        }
+        finally { _choosingReciter=false;UpdatePlayerHeader(); }
     }
     private void StopPlayback(string reason)
     {

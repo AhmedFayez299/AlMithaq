@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using AlMithaq.Core.Models;
 namespace AlMithaq.Shared.Controls;
 public sealed class ChoicePicker : ContentView
@@ -8,6 +8,8 @@ public sealed class ChoicePicker : ContentView
     private IList? _items;
     private int _selected = -1;
     private bool _open;
+    public double DropdownMaxHeight { get; set; } = 310;
+    public ContentPage? OwnerPage { get; set; }
     public Func<Task<int?>>? SelectionProvider { get; set; }
     public string Title { get; set; } = "اختيار";
     public IList? ItemsSource { get => _items; set { _items = value; Refresh(); } }
@@ -16,7 +18,12 @@ public sealed class ChoicePicker : ContentView
     public event EventHandler? SelectedIndexChanged;
     public ChoicePicker()
     {
-        _button = Ui.AsyncButton("اختيار  ﹀", OpenAsync, true); _button.HorizontalOptions = LayoutOptions.Fill;
+        _button = Ui.AsyncButton("اختيار", OpenAsync, true); _button.HorizontalOptions = LayoutOptions.Fill;
+        var arrow = new FontImageSource { FontFamily = "FontIconSolid", Glyph = "\uf078", Size = 12 };
+        Ui.ThemeProperty(arrow,FontImageSource.ColorProperty,"AppMuted");
+        _button.ImageSource = arrow; _button.ContentLayout = new Button.ButtonContentLayout(Button.ButtonContentLayout.ImagePosition.Left,10);
+        _button.LineBreakMode = LineBreakMode.TailTruncation;
+        SemanticProperties.SetDescription(_button, "فتح قائمة الاختيار");
         Content = _button; MinimumHeightRequest = 48;
     }
     public void UseCompactLayout()
@@ -27,18 +34,19 @@ public sealed class ChoicePicker : ContentView
         _button.LineBreakMode = LineBreakMode.TailTruncation;
     }
     private static string Display(object? item) => item is QuranChapter chapter ? chapter.Display : item?.ToString() ?? "";
-    private void Refresh() { if (_button is not null) _button.Text = $"{(SelectedItem is { } item ? Display(item) : Title)}  ﹀"; }
+    private void Refresh() { if (_button is not null) _button.Text = $"{(SelectedItem is { } item ? Display(item) : Title)}"; }
     private async Task OpenAsync()
     {
         if (_open || _items is null || _items.Count == 0) return;
         Element? parent = this; while (parent is not null && parent is not ContentPage) parent = parent.Parent;
-        if (parent is not ContentPage page) return;
+        var page = OwnerPage ?? parent as ContentPage;
+        if (page is null) return;
         _open = true;
         try
         {
             if (SelectionProvider is not null) { var chosen = await SelectionProvider(); if (chosen is { } selected) SelectedIndex = selected; return; }
             var options = _items.Cast<object>().Select(Display).ToArray();
-            var result = await PopupSheet.ShowAsync(page, Title, options, _selected, selection: true);
+            var result = await ChoiceDropdown.ShowAsync(page, _button, Title, options, _selected, DropdownMaxHeight);
             if (result is { } index) SelectedIndex = index;
         }
         finally { _open = false; }

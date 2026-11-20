@@ -13,7 +13,7 @@ public sealed class AppShell : Microsoft.Maui.Controls.NavigationPage
     public AppShell(AppNavigator navigator) : base(navigator.CreateHome())
     {
         _navigator = navigator;
-        BarBackgroundColor = Ui.Green; BarTextColor = Colors.White;
+        BarBackgroundColor = Ui.Green; BarTextColor = Colors.White; Ui.ThemeProperty(this,BackgroundColorProperty,"AppPaper");
         FlowDirection = FlowDirection.LeftToRight;
         navigator.Attach(this);
     }
@@ -46,17 +46,7 @@ public sealed class AppShell : Microsoft.Maui.Controls.NavigationPage
         {
             var menu = new ContentPage { BackgroundColor = Color.FromArgb("#99061C15"), FlowDirection = FlowDirection.RightToLeft };
             var items = Ui.Stack(); items.Spacing = 4;
-            var title = Ui.Label("الميثاق", 21, true); title.TextColor = Colors.White;
-            var subtitle = Ui.Label("لحظات تقربك... وتملأ يومك طمأنينة", 13); subtitle.TextColor = Color.FromArgb("#EEE1BE");
-            var headerArt = new Grid { HeightRequest = 150, IsClippedToBounds = true };
-            headerArt.Add(new Image { Source = "menu_reflection.png", Aspect = Aspect.AspectFill });
-            var headerText = Ui.Stack(title, subtitle); headerText.Spacing = 6; headerText.FlowDirection = FlowDirection.RightToLeft; headerText.VerticalOptions = LayoutOptions.Center;
-            var headerLayout = new Grid { Padding = 16, FlowDirection = FlowDirection.LeftToRight, ColumnDefinitions = { new(new GridLength(.85, GridUnitType.Star)), new(GridLength.Star) }, RowDefinitions = { new(48), new(GridLength.Star) } };
-            var headerTheme = Ui.ThemeToggle(); headerTheme.HorizontalOptions = LayoutOptions.End; headerLayout.Add(headerTheme, 1); headerLayout.Add(headerText, 1, 1);
-            headerArt.Add(headerLayout);
-            var close = Ui.Icon("\uf00d", "إغلاق القائمة", CloseMenuAsync); close.TextColor = Colors.White;
-            headerLayout.Add(close);
-            var header = new Border { Content = headerArt, Padding = 0, StrokeThickness = 0, BackgroundColor = Ui.Green, StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 20 } };
+            var header = new MenuBrandHeader(CloseMenuAsync);
             (string Title, string Glyph, string Route)[] routes = [
                 ("الرئيسية", "\uf015", "home"), ("القرآن الكريم", "\uf02d", "quran"),
                 ("خطة الختمة", "\uf02d", "khatmah"), ("الحفظ والمراجعة", "\uf02e", "hifz"),
@@ -66,12 +56,15 @@ public sealed class AppShell : Microsoft.Maui.Controls.NavigationPage
                 ("الإعدادات", "\uf013", "settings"), ("دليل استخدام الميثاق", "\uf059", "guide"),
                 ("المصادر والتراخيص", "\uf02d", "sources")];
             foreach (var route in routes)
-                items.Add(new NavigationMenuItem(route.Title, "", route.Glyph, () => _navigator.GoToAsync(route.Route)));
+            {
+                if (route.Route is "home" or "prayer" or "settings") items.Add(MenuBrandHeader.Group(route.Route == "home" ? "تلاوة وذكر" : route.Route == "prayer" ? "عبادات وأدوات" : "تفضيلات ومساعدة"));
+                items.Add(new NavigationMenuItem(route.Title,"",route.Glyph,()=>_navigator.GoToAsync(route.Route)));
+            }
             var separator = new BoxView { HeightRequest = 1 }; Ui.ThemeProperty(separator, BoxView.ColorProperty, "AppStroke");
-            var footerTitle = Ui.Label("الميثاق · رفيقك للذكر والقرآن", 12, true);
+            var footerTitle = Ui.Label("الميثاق", 12, true);
             var footerNote = Ui.Label("لحظات تقربك... وتملأ يومك طمأنينة", 10); Ui.ThemeProperty(footerNote, Label.TextColorProperty, "AppMuted");
             var version = Ui.Label($"الإصدار {AppInfo.Current.VersionString}", 10); Ui.ThemeProperty(version, Label.TextColorProperty, "AppMuted");
-            var footer = Ui.Stack(separator, footerTitle, footerNote, version); footer.Spacing = 3;
+            var footer = Ui.Stack(separator,Ui.Row(footerTitle,version),footerNote); footer.Spacing = 3;
             footer.FlowDirection = FlowDirection.RightToLeft;
             var layout = new Grid { RowSpacing = 10, FlowDirection = FlowDirection.RightToLeft,
                 RowDefinitions = { new(GridLength.Auto), new(GridLength.Star), new(GridLength.Auto) } };
@@ -111,8 +104,8 @@ public sealed class AppShell : Microsoft.Maui.Controls.NavigationPage
         Preferences.Remove("adhan.notification-resume-seconds");
         Preferences.Remove("adhan.notification-voice");
         await _navigator.GoToAsync("settings");
-        Platforms.iOS.ReminderAudio.Play(voice == 0 ? "adhan_ali_mulla" : "adhan_haddad",
-            voice == 0 ? "mp3" : "m4a", Features.PrayerTimes.Services.AdhanSettings.Volume, position);
+        Platforms.iOS.ReminderAudio.Play(Features.PrayerTimes.Services.AdhanSettings.AudioName(voice),
+            Features.PrayerTimes.Services.AdhanSettings.AudioExtension(voice), Features.PrayerTimes.Services.AdhanSettings.Volume, position);
     }
 
     public Task GoBackAsync() => _navigator.GoBackAsync();

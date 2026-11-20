@@ -55,7 +55,7 @@ public partial class MainActivity
         if (context is null) return false;
 
         var dialog = new Dialog(this);
-        var badge = Ui.Card(new Image { Source = "mithaqbrand.png", WidthRequest = 46, HeightRequest = 46 });
+        var badge = Ui.Card(new Image { Source = "mithaqlogo.png", WidthRequest = 46, HeightRequest = 46 });
         badge.HorizontalOptions = LayoutOptions.Center;
         badge.Padding = 8;
         badge.BackgroundColor = Ui.Green;

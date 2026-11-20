@@ -23,6 +23,67 @@ public sealed class LocationService
         Preferences.Set("location.description", description); Preferences.Set("location.updated", DateTime.UtcNow.ToString("O"));
         AdhanCoordinator.Refresh();
     }
+    public async Task RefreshNameAsync(CancellationToken ct)
+    {
+        if (Saved() is not { } saved || saved.Description.Any(IsArabic) || saved.Description.StartsWith("موقع يدوي")) return;
+        var description = await CityNameAsync(saved.Location, saved.Description, ct);
+        var current = Saved();
+        if (current?.Location.Latitude == saved.Location.Latitude && current.Location.Longitude == saved.Location.Longitude)
+            Preferences.Set("location.description", description);
+    }
+    private static async Task<string> CityNameAsync(Location location, string fallback, CancellationToken ct)
+    {
+        try
+        {
+#if ANDROID
+            using var locale = Java.Util.Locale.ForLanguageTag("ar");
+            using var geocoder = new global::Android.Locations.Geocoder(global::Android.App.Application.Context, locale);
+            IList<global::Android.Locations.Address>? places;
+            if (OperatingSystem.IsAndroidVersionAtLeast(33))
+            {
+                using var listener = new ArabicGeocodeListener();
+                geocoder.GetFromLocation(location.Latitude, location.Longitude, 1, listener);
+                places = await listener.Result.Task.WaitAsync(TimeSpan.FromSeconds(6), ct);
+            }
+            else
+            {
+#pragma warning disable CA1422 // Older Android devices require the legacy geocoder overload.
+                places = await geocoder.GetFromLocationAsync(location.Latitude, location.Longitude, 1).WaitAsync(TimeSpan.FromSeconds(6), ct);
+#pragma warning restore CA1422
+            }
+            var place = places?.FirstOrDefault();
+            var candidates = new[] { place?.Locality, place?.SubAdminArea, place?.AdminArea };
+#elif IOS
+#pragma warning disable CA1422 // Same reverse-geocoding service as MAUI, explicitly requesting Arabic.
+            using var geocoder = new CoreLocation.CLGeocoder();
+            using var coordinate = new CoreLocation.CLLocation(location.Latitude, location.Longitude);
+            using var locale = new Foundation.NSLocale("ar");
+            var places = await geocoder.ReverseGeocodeLocationAsync(coordinate, locale).WaitAsync(TimeSpan.FromSeconds(6), ct);
+#pragma warning restore CA1422
+            var place = places.FirstOrDefault();
+            var candidates = new[] { place?.Locality, place?.SubAdministrativeArea, place?.AdministrativeArea };
+#else
+            var places = await Geocoding.Default.GetPlacemarksAsync(location).WaitAsync(TimeSpan.FromSeconds(6), ct);
+            var place = places.FirstOrDefault();
+            var candidates = new[] { place?.Locality, place?.SubAdminArea, place?.AdminArea };
+#endif
+            return candidates.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value) && value.Any(IsArabic))
+                ?? fallback;
+
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex) { System.Diagnostics.Debug.WriteLine(ex); return fallback; }
+    }
+    private static bool IsArabic(char character) => character is >= '\u0600' and <= '\u06ff';
+#if ANDROID
+    [System.Runtime.Versioning.SupportedOSPlatform("android33.0")]
+    private sealed class ArabicGeocodeListener : Java.Lang.Object, global::Android.Locations.Geocoder.IGeocodeListener
+    {
+        public TaskCompletionSource<IList<global::Android.Locations.Address>> Result { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public void OnGeocode(IList<global::Android.Locations.Address> addresses) => Result.TrySetResult(addresses);
+        public void OnError(string? message) => Result.TrySetResult([]);
+    }
+#endif
     public async Task<DeviceLocation> AcquireAsync(CancellationToken ct)
     {
         await _gate.WaitAsync(ct);
@@ -36,7 +97,10 @@ public sealed class LocationService
             ct.ThrowIfCancellationRequested();
             var description = $"{location.Latitude:F3}, {location.Longitude:F3}";
             // Reverse-geocoding is optional: prayer calculations never depend on network geocoding.
-            Save(location, description); return new(location, description, false);
+            Save(location, description);
+            description = await CityNameAsync(location, description, ct);
+            Preferences.Set("location.description", description);
+            return new(location, description, false);
         }
         finally { _gate.Release(); }
     }

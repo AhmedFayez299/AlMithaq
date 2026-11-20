@@ -3,8 +3,10 @@ namespace AlMithaq.Platforms.Android;
 
 public static class ReaderPresentation
 {
+    public static bool IsImmersive { get; private set; }
     public static void SetImmersive(bool immersive)
     {
+        IsImmersive = immersive;
         var window = Microsoft.Maui.ApplicationModel.Platform.CurrentActivity?.Window;
         if (window?.DecorView is not { } decor) return;
         var controller = WindowCompat.GetInsetsController(window, decor);

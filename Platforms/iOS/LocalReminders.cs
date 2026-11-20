@@ -127,7 +127,7 @@ internal static class LocalReminders
         {
             content.Sound = reminder.Kind switch
             {
-                "adhan" => UNNotificationSound.GetSound(AdhanSettings.Voice == 0 ? "adhan_ali_notice.caf" : "adhan_haddad_notice.caf"),
+                "adhan" => UNNotificationSound.GetSound(AdhanSettings.NotificationName(AdhanSettings.Voice)),
                 "salawat" => UNNotificationSound.GetSound("salawat_notice.caf"),
                 _ => UNNotificationSound.Default
             };

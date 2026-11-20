@@ -30,8 +30,11 @@ public static class AdhanScheduler
     private static PendingIntent Pending(int slot, Intent intent) => PendingIntent.GetBroadcast(AppContext, 8100 + slot, intent, PendingFlags)!;
     private static void Schedule(long at, PendingIntent pending)
     {
-        if (OperatingSystem.IsAndroidVersionAtLeast(23)) Manager.SetExactAndAllowWhileIdle(AlarmType.RtcWakeup, at, pending);
-        else Manager.SetExact(AlarmType.RtcWakeup, at, pending);
+        // Prayer alarms are user-facing alarm-clock events; Android does not batch these in Doze.
+        using var launch = AppContext.PackageManager!.GetLaunchIntentForPackage(AppContext.PackageName!)!;
+        using var show = PendingIntent.GetActivity(AppContext, 8098, launch, PendingFlags)!;
+        using var clock = new AlarmManager.AlarmClockInfo(at, show);
+        Manager.SetAlarmClock(clock, pending);
     }
     public static void Refresh()
     {
@@ -74,14 +77,21 @@ public sealed class AdhanAlarmReceiver : BroadcastReceiver
         if (context is null || intent is null || !AdhanSettings.Enabled) return;
         var generation = intent.GetStringExtra("generation");
         if (generation != Preferences.Get("adhan.generation", "") || !AdhanPlan.CanPlay(intent.GetLongExtra("at", 0), DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())) return;
-        AdhanCoordinator.Refresh();
+        var scheduled = intent.GetLongExtra("at", 0);
+        var received = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        Preferences.Set("adhan.last.scheduled", scheduled); Preferences.Set("adhan.last.received", received);
+        global::Android.Util.Log.Info("AlMithaq.Adhan", $"Alarm received; deliveryDelayMs={received-scheduled}");
         try
         {
             using var playback = new Intent(context, typeof(AdhanPlaybackService));
             playback.PutExtra("name", intent.GetStringExtra("name") ?? "الصلاة");
+            playback.PutExtra("scheduledAt", scheduled);
             global::AndroidX.Core.Content.ContextCompat.StartForegroundService(context, playback);
         }
         catch (Exception ex) { Preferences.Set("adhan.error", "تعذر تشغيل الأذان؛ افتح إعداداته للتحقق."); global::Android.Util.Log.Error("AlMithaq.Adhan", ex.ToString()); }
+        // Keep calculations and the other reminder schedulers off the audio startup path.
+        var work = GoAsync();
+        _ = Task.Run(() => { try { AdhanCoordinator.Refresh(); } finally { work?.Finish(); } });
     }
 }
 

@@ -12,7 +12,7 @@ public sealed class MemorizationPage : ContentPage
     private QuranDocument? _document;
     private readonly ChoicePicker _chapter = new() { Title = "السورة" };
     private readonly ChoicePicker _filter = new() { Title = "عرض المقاطع", ItemsSource = new[] { "المستحقة للمراجعة", "كل مقاطعي" }, SelectedIndex = 0 };
-    private readonly Entry _from = Ui.Input("أول آية", true), _to = Ui.Input("آخر آية", true);
+    private readonly ChoicePicker _from = new() { Title = "آية البداية" }, _to = new() { Title = "آية النهاية" };
     private readonly Label _status = Ui.Label("", 13), _summary = Ui.Label("", 14, true);
     private readonly VerticalStackLayout _items = new() { Spacing = 7 }, _editor;
     private bool _active, _loaded;
@@ -22,19 +22,28 @@ public sealed class MemorizationPage : ContentPage
         _repository = repository; _navigator = navigator; Ui.Page(this, "الحفظ والمراجعة");
         var fields = new Grid { ColumnDefinitions = { new(GridLength.Star), new(GridLength.Star) }, ColumnSpacing = 10 };
         fields.Add(Ui.Stack(Ui.Label("من آية", 13), _from)); fields.Add(Ui.Stack(Ui.Label("إلى آية", 13), _to), 1);
-        _editor = Ui.Stack(Ui.Label("مقطع جديد لخطة الحفظ", 15, true), _chapter, fields, Ui.Button("إضافة المقطع", AddPlan)); _editor.Spacing = 7;
-        _editor.IsVisible = MemorizationStore.Load().Count == 0;
-        var add = Ui.Button("إضافة مقطع للحفظ", () => _editor.IsVisible = !_editor.IsVisible, true);
+        _chapter.OwnerPage = _from.OwnerPage = _to.OwnerPage = _filter.OwnerPage = this;
+        _editor = Ui.Stack(Ui.Label("السورة المراد حفظها", 13, true), _chapter, fields, Ui.Button("حفظ المقطع في خطتي", AddPlan)); _editor.Spacing = 7;
+        _editor.IsVisible = false;
+        var add = new Grid { ColumnDefinitions = { new(GridLength.Star),new(48) } };
+        var addTitle = Ui.Label("مقطع جديد",16,true); addTitle.VerticalOptions = LayoutOptions.Center; add.Add(addTitle);
+        var addButton = Ui.Button("+",()=>_editor.IsVisible=!_editor.IsVisible,true); addButton.FontSize = 25; addButton.FontFamily = "Almarai-Regular"; addButton.Padding = 0; addButton.WidthRequest = 44;
+        SemanticProperties.SetDescription(addButton,"إضافة مقطع جديد"); add.Add(addButton,1);
         _chapter.SelectedIndexChanged += (_, _) =>
         {
             if (_chapter.SelectedItem is not QuranChapter c) return;
-            _from.Text = "1"; _to.Text = Math.Min(5, c.Verses.Count).ToString();
+            _from.ItemsSource = Enumerable.Range(1,c.Verses.Count).ToArray(); _from.SelectedIndex = -1; _from.SelectedIndex = 0;
+            UpdateEndVerses();
         };
+        _from.SelectedIndexChanged += (_, _) => UpdateEndVerses();
         _filter.SelectedIndexChanged += (_, _) => Render();
         Ui.ThemeProperty(_status, Label.TextColorProperty, "AppMuted");
-        var body = Ui.Stack(Ui.Label("احفظ بهدوء وراجع باستمرار", 18, true), Ui.Label("اختر مقطعًا، ثم تدرّب على قراءته واستماعه، واختبر نفسك قبل تسجيل تقييمك. كل شيء محفوظ على جهازك.", 13),
-            Ui.Card(Ui.Stack(_summary, Ui.Label("المواعيد تنظيم شخصي للمراجعة: 1، 3، 7، 14، ثم 30 يومًا بحسب تقييمك. يمكنك إعادة التدريب في اليوم نفسه.", 12))),
-            add, Ui.Card(_editor), _status, _filter, _items);
+        var editorCard = ScreenDesign.Surface(_editor);
+        editorCard.SetBinding(IsVisibleProperty,new Binding(nameof(IsVisible),source:_editor));
+        var info = new Grid { ColumnDefinitions = { new(GridLength.Star),new(44) } }; _summary.VerticalOptions=LayoutOptions.Center; info.Add(_summary);
+        info.Add(Ui.Icon("\uf05a","كيف تعمل المراجعة؟",()=>PopupSheet.AlertAsync(this,"مراجعة منظمة","تدرّب على القراءة والاستماع، ثم اختبر نفسك وسجل تقييمك. تتدرج مواعيد المراجعة: 1، 3، 7، 14 ثم 30 يومًا بحسب تقييمك، ويمكنك التدريب في اليوم نفسه.","فهمت")),1);
+        var body = Ui.Stack(ScreenDesign.Intro("حفظ ثابت، مراجعة أيسر","اختر السورة وحدد مقطعًا يناسبك", "\uf02e"),ScreenDesign.Surface(info),
+            add, editorCard, _status, _filter, _items);
         body.Padding = new Thickness(16, 12, 16, 24); body.Spacing = 8;
         var host = new Grid { ClassId = "choice-host" }; host.Add(new ScrollView { Content = body }); Content = host;
     }
@@ -52,11 +61,17 @@ public sealed class MemorizationPage : ContentPage
     protected override void OnDisappearing() { _active = false; base.OnDisappearing(); }
     protected override bool OnBackButtonPressed() => PopupSheet.Dismiss(this) || base.OnBackButtonPressed();
     private List<MemorizationPlan> Plans() => MemorizationStore.Load().Where(p => _document is not null && p.EndAyah <= _document.Chapters[p.Surah - 1].Verses.Count).ToList();
+    private void UpdateEndVerses()
+    {
+        if (_chapter.SelectedItem is not QuranChapter chapter || _from.SelectedItem is not int first) return;
+        var previous = _to.SelectedItem is int end ? end : first + 4;
+        _to.ItemsSource = Enumerable.Range(first,chapter.Verses.Count-first+1).ToArray();
+        _to.SelectedIndex = -1; _to.SelectedIndex = Math.Clamp(previous,first,chapter.Verses.Count)-first;
+    }
     private void AddPlan()
     {
-        _from.Unfocus(); _to.Unfocus();
         if (_chapter.SelectedItem is not QuranChapter chapter) return;
-        if (!int.TryParse(NumberInput.Normalize(_from.Text ?? ""), out var from) || !int.TryParse(NumberInput.Normalize(_to.Text ?? ""), out var to) || from < 1 || to < from || to > chapter.Verses.Count)
+        if (_from.SelectedItem is not int from || _to.SelectedItem is not int to || from < 1 || to < from || to > chapter.Verses.Count)
         { _status.Text = $"اختر بداية ونهاية صحيحتين من 1 إلى {chapter.Verses.Count}"; return; }
         var plans = Plans();
         if (plans.Any(p => p.Surah == chapter.Number && p.StartAyah == from && p.EndAyah == to)) { _status.Text = "هذا المقطع موجود في خطتك بالفعل"; return; }

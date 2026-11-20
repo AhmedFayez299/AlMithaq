@@ -20,3 +20,10 @@ No network or account required for playback.
 These replace the earlier Creative Commons recordings. No CC license is asserted
 for the newly supplied recordings; copyright remains with the respective owners.
 Prepared 2026-11-04 from the project owner's supplied local files.
+
+
+3. Nasser Al-Qatami / ناصر القطامي
+User supplied naser-alkatamy.mp3 (2026-11-20). Original metadata references www.ashefaa.com.
+Bundled adhan_naser.m4a: complete recording, AAC 64 kbps mono 32 kHz; no cutting or silence removal.
+iOS uses a 29.8-second IMA4 notification preview; the full recording is bundled for in-app playback.
+Rights remain with the respective owners; no additional redistribution license is asserted.

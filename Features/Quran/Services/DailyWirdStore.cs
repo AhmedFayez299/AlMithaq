@@ -35,6 +35,6 @@ public static class DailyWirdStore
         var firstCompletion = !Preferences.ContainsKey(completionKey);
         var finished = plan.Complete(today);
         if (KhatmahStore.Linked) KhatmahStore.CompleteToday(); else Save(finished);
-        Preferences.Set(completionKey, JsonSerializer.Serialize(finished)); return firstCompletion;
+        Preferences.Set(completionKey, JsonSerializer.Serialize(plan with { CompletedOn = today })); return firstCompletion;
     }
 }

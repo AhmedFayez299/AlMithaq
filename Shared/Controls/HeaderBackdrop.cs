@@ -12,7 +12,7 @@ public sealed class HeaderBackdrop : GraphicsView
     {
         public void Draw(ICanvas canvas, RectF bounds)
         {
-            canvas.SaveState(); canvas.StrokeColor = Color.FromRgba(232, 216, 172, 35); canvas.StrokeSize = .8f;
+            canvas.SaveState(); canvas.StrokeColor = AppAppearance.IsDark ? Color.FromRgba(232, 216, 172, 28) : Color.FromRgba(178, 138, 67, 28); canvas.StrokeSize = .8f;
             for (float x = -12; x < bounds.Width + 40; x += 68)
             {
                 var y = bounds.Height * .56f;

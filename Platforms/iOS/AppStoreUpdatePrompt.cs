@@ -31,7 +31,7 @@ internal static class AppStoreUpdatePrompt
             SemanticProperties.SetDescription(backdrop, "إغلاق تنبيه التحديث");
             shade.Add(backdrop);
 
-            var badge = Ui.Card(new Image { Source = "mithaqbrand.png", WidthRequest = 46, HeightRequest = 46 });
+            var badge = Ui.Card(new Image { Source = "mithaqlogo.png", WidthRequest = 46, HeightRequest = 46 });
             badge.HorizontalOptions = LayoutOptions.Center; badge.Padding = 8; badge.BackgroundColor = Ui.Green;
             var title = Ui.Label("تحديث الميثاق متاح", 21, true);
             title.HorizontalTextAlignment = TextAlignment.Center;

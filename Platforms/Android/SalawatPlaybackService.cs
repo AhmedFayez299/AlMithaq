@@ -1,4 +1,4 @@
-﻿using global::Android.App;
+using global::Android.App;
 using global::Android.Content;
 using global::Android.Content.PM;
 using global::Android.Media;
@@ -11,6 +11,13 @@ namespace AlMithaq.Platforms.Android;
 [Service(Enabled = true, Exported = false, ForegroundServiceType = ForegroundService.TypeMediaPlayback)]
 public sealed class SalawatPlaybackService : Service, AudioManager.IOnAudioFocusChangeListener
 {
+    private static PowerManager.WakeLock? _startup;
+    internal static void HoldStartup(Context context)
+    {
+        ReleaseStartup();var power=(PowerManager)context.GetSystemService(Context.PowerService)!;
+        _startup=power.NewWakeLock(WakeLockFlags.Partial,"AlMithaq:SalawatStartup");_startup!.SetReferenceCounted(false);_startup.Acquire(15000);
+    }
+    internal static void ReleaseStartup() { var hold=_startup;_startup=null;if(hold is null)return;if(hold.IsHeld)hold.Release();hold.Dispose(); }
     private static SalawatPlaybackService? _current;
     private MediaPlayer? _player;
     private AudioManager? _audio;
@@ -50,7 +57,13 @@ public sealed class SalawatPlaybackService : Service, AudioManager.IOnAudioFocus
             using var file = Resources!.OpenRawResourceFd(Resource.Raw.salawat_reminder)!;
             _player = new MediaPlayer(); _player.SetAudioAttributes(attributes); _player.SetWakeMode(this, WakeLockFlags.Partial);
             _player.SetDataSource(file.FileDescriptor, file.StartOffset, file.Length); _player.SetVolume((float)SalawatSettings.Volume, (float)SalawatSettings.Volume);
-            _player.Prepared += (_, _) => _player?.Start(); _player.Completion += (_, _) => StopSelf();
+            var scheduled=intent?.GetLongExtra("at",0)??0;
+            _player.Prepared += (_, _) =>
+            {
+                _player?.Start();ReleaseStartup();
+                var started=DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();Preferences.Set("salawat.last.started",started);
+                if(scheduled>0) { Preferences.Set("salawat.last.total-delay",Math.Max(0,started-scheduled));global::Android.Util.Log.Info("AlMithaq.Salawat",$"Audio started: totalDelayMs={Math.Max(0,started-scheduled)}"); }
+            }; _player.Completion += (_, _) => StopSelf();
             _player.Error += (_, e) => { e.Handled = true; Preferences.Set("salawat.error", "تعذر تشغيل صوت التذكير"); StopSelf(); };
             _player.PrepareAsync();
             global::Android.Util.Log.Info("AlMithaq.Salawat", $"Playing alarm stream; saved={_previousAlarmVolume} applied={_appliedAlarmVolume} gain={SalawatSettings.Volume:F2} preview={_preview}");
@@ -70,5 +83,5 @@ public sealed class SalawatPlaybackService : Service, AudioManager.IOnAudioFocus
         }
         if (_focus is not null) { _audio?.AbandonAudioFocusRequest(_focus); _focus.Dispose(); _focus = null; }
     }
-    public override void OnDestroy() { ReleasePlayer(); if (_current == this) _current = null; StopForeground(StopForegroundFlags.Remove); base.OnDestroy(); }
+    public override void OnDestroy() { ReleaseStartup(); ReleasePlayer(); if (_current == this) _current = null; StopForeground(StopForegroundFlags.Remove); base.OnDestroy(); }
 }

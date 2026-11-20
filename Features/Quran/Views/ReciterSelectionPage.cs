@@ -1,4 +1,4 @@
-﻿using AlMithaq.Core.Logic;
+using AlMithaq.Core.Logic;
 using AlMithaq.Core.Models;
 using AlMithaq.Features.Quran.Services;
 using AlMithaq.Shared.Controls;
@@ -40,9 +40,10 @@ public sealed class ReciterSelectionPage : ContentPage
         Ui.ThemeProperty(_search, SearchBar.PlaceholderColorProperty, "AppMuted");
         DataTemplate Template() => new(() =>
         {
-            var name = Ui.Label("", 15, true); name.SetBinding(Label.TextProperty, "Reader.Name");
-            var detail = Ui.Label("", 12); detail.SetBinding(Label.TextProperty, nameof(Row.DownloadText));
-            var labels = Ui.Stack(name, detail); labels.Spacing = 3; labels.VerticalOptions = LayoutOptions.Center;
+            var name = Ui.Label("", 14, true); name.MaxLines=1;name.LineBreakMode=LineBreakMode.TailTruncation; name.SetBinding(Label.TextProperty, "Reader.Name");
+            var detail = Ui.Label("", 11); detail.MaxLines=2;Ui.ThemeProperty(detail,Label.TextColorProperty,"AppMuted"); detail.SetBinding(Label.TextProperty, nameof(Row.DownloadText));
+            var currentBadge=Ui.Label("القارئ الحالي",10,true);currentBadge.TextColor=Ui.Gold;currentBadge.SetBinding(IsVisibleProperty,nameof(Row.Current));
+            var labels = Ui.Stack(name, currentBadge, detail); labels.Spacing = 3; labels.VerticalOptions = LayoutOptions.Center;
             var choose = new TapGestureRecognizer(); choose.Tapped += async (_, _) => { if (labels.BindingContext is Row row) await CloseAsync(new(row.Reader.Id, false)); }; labels.GestureRecognizers.Add(choose);
             var selected = Ui.Label("\uf058", 17); selected.FontFamily = "FontIconSolid"; selected.TextColor = Ui.Green; selected.SetBinding(IsVisibleProperty, nameof(Row.Current)); selected.VerticalOptions = LayoutOptions.Center; selected.InputTransparent = true;
             var star = Ui.Icon("\uf005", "تثبيت القارئ أو إزالته من المفضلة", () => Task.CompletedTask);
@@ -51,16 +52,18 @@ public sealed class ReciterSelectionPage : ContentPage
             var download = Ui.Icon("\uf019", "تنزيل السورة الحالية بهذا الصوت", () => Task.CompletedTask);
             download.SetBinding(IsVisibleProperty, nameof(Row.CanDownload));
             download.Clicked += async (_, _) => { if (download.BindingContext is Row row) await CloseAsync(new(row.Reader.Id, true)); };
-            var grid = new Grid { ColumnDefinitions = { new(GridLength.Star), new(24), new(44), new(44) }, ColumnSpacing = 2, Padding = new Thickness(10, 7), MinimumHeightRequest = 68 };
-            star.WidthRequest = download.WidthRequest = 44; star.MinimumWidthRequest = download.MinimumWidthRequest = 44;
-            grid.Add(labels); grid.Add(selected, 1); grid.Add(star, 2); grid.Add(download, 3);
-            var card = Ui.Card(grid); card.Padding = 0; card.Margin = new Thickness(0, 0, 0, 5); return card;
+            var audioIcon=Ui.Label("\uf028",18);audioIcon.FontFamily="FontIconSolid";audioIcon.TextColor=Ui.Gold;audioIcon.HorizontalTextAlignment=TextAlignment.Center;audioIcon.VerticalTextAlignment=TextAlignment.Center;
+            var medallion=new Border { Content=audioIcon,WidthRequest=40,HeightRequest=40,StrokeThickness=.6,Stroke=new SolidColorBrush(Ui.Gold.WithAlpha(.5f)),StrokeShape=new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius=14 },VerticalOptions=LayoutOptions.Center };Ui.ThemeProperty(medallion,Border.BackgroundColorProperty,"AppSoft");
+            var grid = new Grid { ColumnDefinitions = { new(40),new(GridLength.Star), new(20), new(40), new(40) }, ColumnSpacing = 7, Padding = new Thickness(10, 9), MinimumHeightRequest = 76 };
+            star.WidthRequest = download.WidthRequest = star.MinimumWidthRequest = download.MinimumWidthRequest = 40;
+            grid.Add(medallion);grid.Add(labels,1); grid.Add(selected, 2); grid.Add(star, 3); grid.Add(download, 4);
+            var card = Ui.Card(grid); card.Padding = 0; card.Margin = new Thickness(0, 0, 0, 7); card.Stroke=new SolidColorBrush(Ui.Gold.WithAlpha(.35f)); card.StrokeThickness=.6; return card;
         });
         _pinned.ItemTemplate = Template(); _all.ItemTemplate = Template();
         _all.EmptyView = Ui.Label("لا يوجد قارئ يطابق البحث", 14);
-        var tip = Ui.Label("ثبّت قرّاءك بالنجمة ليبقوا في الأعلى. التنزيل يحفظ السورة الحالية فقط، والتلاوة عبر الإنترنت متاحة دون تنزيل.", 12);
+        var tip = ScreenDesign.Intro("تلاوة تُرافق يومك","اختر القارئ للاستماع، أو ثبّته بالنجمة", "\uf028");
         var layout = new Grid { Padding = new Thickness(12, 8), RowSpacing = 5, RowDefinitions = { new(GridLength.Auto), new(GridLength.Auto), new(GridLength.Auto), new(GridLength.Auto), new(GridLength.Auto), new(GridLength.Star) } };
-        layout.Add(_search); layout.Add(tip, 0, 1); layout.Add(_pinnedTitle, 0, 2); layout.Add(_pinned, 0, 3); layout.Add(_count, 0, 4); layout.Add(_all, 0, 5);
+        layout.Add(tip); layout.Add(_search, 0, 1); layout.Add(_pinnedTitle, 0, 2); layout.Add(_pinned, 0, 3); layout.Add(_count, 0, 4); layout.Add(_all, 0, 5);
         Content = layout; _search.TextChanged += (_, _) => Render(); Render();
     }
     private void Render()
@@ -69,7 +72,7 @@ public sealed class ReciterSelectionPage : ContentPage
         var rows = QuranMediaService.Reciters.Where(r => ArabicSearch.Normalize(r.Name).Contains(query, StringComparison.OrdinalIgnoreCase))
             .Select(r => new Row(r, _favorites.Contains(r.Id), r.Id == _current, Detail(r), _verses.Count > 0 && Saved(r) < _verses.Count)).ToArray();
         var pinned = rows.Where(r => r.Favorite || r.Current).OrderByDescending(r => r.Current).ToArray();
-        _pinned.ItemsSource = pinned; _pinned.HeightRequest = Math.Min(210, pinned.Length * 78); _pinned.IsVisible = _pinnedTitle.IsVisible = pinned.Length > 0;
+        _pinned.ItemsSource = pinned; _pinned.HeightRequest = Math.Min(240, pinned.Length * 114); _pinned.IsVisible = _pinnedTitle.IsVisible = pinned.Length > 0;
         _all.ItemsSource = rows.Where(r => !r.Favorite && !r.Current).ToArray(); _count.Text = $"مكتبة التلاوات · {rows.Length} تسجيلًا";
     }
     private int Saved(Reciter r) => _saved.TryGetValue(r.Id, out var count) ? count : _saved[r.Id] = _verses.Count(v => _media.IsDownloaded(r.Id, v.Number));

@@ -1,4 +1,4 @@
-﻿using AlMithaq.Core.Abstractions;
+using AlMithaq.Core.Abstractions;
 using AlMithaq.Shared.Controls;
 namespace AlMithaq.Pages;
 public sealed class SourcesPage : ContentPage
@@ -20,7 +20,7 @@ public sealed class SourcesPage : ContentPage
             Section("صفحات المصحف", "صفحات رقمية من مجمع الملك فهد عبر Quran.ws، وإحداثيات الآيات وبيانات المصدر CC BY 4.0. التراخيص وإشعارات المصدر مرفقة بالحزمة.", Link("حقوق المصحف الرقمي", "https://dm.qurancomplex.gov.sa/rights/")),
             Section("التلاوات والتفسير", "التفسير الميسر لمجمع الملك فهد عبر AlQuran.cloud. تلاوات Islamic Network مجانية وفق شروط المصدر، ويحتفظ القراء وأصحاب الحقوق بحقوق التسجيلات.", Link("شروط المصدر", "https://alquran.cloud/terms-and-conditions"), Link("تلاوات آية بآية · EveryAyah", "https://everyayah.com/")),
             Section("صوت الصلاة على النبي", "تسجيل قدّمه مالك التطبيق لتذكير الصلاة على النبي. ضُبطت جهارته وضُغط إلى AAC مع الاحتفاظ بالتسجيل كاملًا.", Ui.Label("الصوت يعمل دون إنترنت.", 12)),
-            Section("تسجيلات الأذان", "علي بن أحمد ملا وأحمد الحداد: ملفان قدّمهما صاحب المشروع. الأول محفوظ دون إعادة ترميز، والثاني مضغوط إلى AAC أحادي القناة دون اقتطاع. الحقوق لأصحاب التسجيلات؛ لا تُنسب إليهما تراخيص التسجيلات السابقة.", Ui.AsyncButton("تفاصيل ملفات الأذان", ShowAdhanLicensesAsync, true)),
+            Section("تسجيلات الأذان", "علي بن أحمد ملا وناصر القطامي وأحمد الحداد: تسجيلات قدّمها صاحب المشروع. تسجيل القطامي مضغوط إلى AAC أحادي القناة مع الاحتفاظ بالأذان كاملًا. الحقوق لأصحاب التسجيلات؛ لا تُنسب إليها تراخيص التسجيلات السابقة.", Ui.AsyncButton("تفاصيل ملفات الأذان", ShowAdhanLicensesAsync, true)),
             Section("حصن المسلم", "مكتبة نصية كاملة من المصدر الرقمي asellam/HisnElMuslim: 133 بابًا و302 نص، مع حفظ النصوص والمراجع وأعداد التكرار كما وردت. إعداد سعيد بن علي بن وهف القحطاني، والنسخة الرقمية لعبد الله سَلّام بترخيص MIT. ترخيص النسخة الرقمية مضمّن مع التطبيق.", Link("مصدر حصن المسلم", "https://github.com/asellam/HisnElMuslim")),
             Section("الأذكار والأدعية", "الصباح والمساء: مشروع AbdelrahmanBayoumi/Azkar-App، MIT. مراجع الأحاديث ظاهرة كما وردت في البيانات. أذكار النوم وبعد الصلاة تحمل مراجع الصحيحين داخل البطاقات."),
             Section("حاسبة الزكاة", "الحسابات عددية مشروطة بالمدخلات وتحقق الشروط. يوضّح كل نوع مرجعه، ومنها دار الإفتاء المصرية ودليل زكاة الأفراد وإرشادات الأنعام. أسعار المعادن وقيمة الفطر تُدخل يدويًا وفق اليوم والبلد؛ لا يُدّعى أن الحاسبة تغطي كل خلاف أو حالة خاصة.",
@@ -28,10 +28,10 @@ public sealed class SourcesPage : ContentPage
             Section("الحساب والخطوط والرسومات", "حساب الصلاة: Adhan، MIT. عرض الوسائط: .NET MAUI Community Toolkit، MIT. خطا El Messiri وAmiri Quran: SIL Open Font License 1.1. الهوية والرسومات الخفيفة صُممت للتطبيق."));
         stack.Padding = new Thickness(16, 12, 16, 24); stack.Spacing = 6; Content = new ScrollView { Content = stack };
     }
-    private async Task ShowQuranLicenseAsync() { var document = await _quran.LoadAsync(); await DisplayAlertAsync("Tanzil Quran Text License", document.CopyrightNotice, "إغلاق"); }
+    private async Task ShowQuranLicenseAsync() { var document = await _quran.LoadAsync(); await PopupSheet.AlertAsync(this, "Tanzil Quran Text License", document.CopyrightNotice, "إغلاق"); }
     private async Task ShowAdhanLicensesAsync()
     {
         using var stream = await FileSystem.OpenAppPackageFileAsync("adhan-notice.txt"); using var reader = new StreamReader(stream);
-        await DisplayAlertAsync("مصادر الأذان", await reader.ReadToEndAsync(), "إغلاق");
+        await PopupSheet.AlertAsync(this, "مصادر الأذان", await reader.ReadToEndAsync(), "إغلاق");
     }
 }

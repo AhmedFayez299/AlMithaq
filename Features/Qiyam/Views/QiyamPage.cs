@@ -14,10 +14,11 @@ public sealed class QiyamPage : ContentPage
     private readonly IPrayerService _prayers;
     private readonly IAppNavigator _navigator;
     private readonly AzkarRepository _azkar;
-    private readonly DatePicker _date = new() { MinimumDate = DateTime.Today.AddDays(-30), MaximumDate = DateTime.Today, Date = DateTime.Today, Format = "dd / MM / yyyy", FontFamily = "Almarai-Regular", FontSize = 14 };
+    private readonly ChoicePicker _date = new() { Title = "اختر الليلة" };
+    private DateTime[] _evenings = [];
     private readonly Label _countdown = Ui.Label("حدد موقعك لعرض وقت الليلة", 16, true), _status = Ui.Label("", 13), _count = Ui.Label("0", 28, true), _goalText = Ui.Label("", 13), _reminderStatus = Ui.Label("", 12);
     private readonly Label[] _times = [Ui.Label("—", 15, true), Ui.Label("—", 15, true), Ui.Label("—", 15, true)];
-    private readonly Entry _goal = Ui.Input("عدد زوجي من 2 إلى 100", true);
+    private readonly ChoicePicker _goal = new() { Title = "هدف الركعات", ItemsSource = Enumerable.Range(1,50).Select(n => n*2).ToArray() };
     private readonly ProgressBar _progress = new() { ProgressColor = Ui.Gold, HeightRequest = 5 };
     private readonly Switch _reminder = new(), _witr = new();
     private readonly ChoicePicker _lead = new() { Title = "موعد التذكير", ItemsSource = new[] { "بداية الثلث الأخير", "قبله بـ15 دقيقة", "قبله بـ30 دقيقة", "قبله بساعة" } };
@@ -28,13 +29,13 @@ public sealed class QiyamPage : ContentPage
     private IDispatcherTimer? _timer;
     private bool _sync, _active, _recordingAllowed;
     private readonly GraphicsView _art = new() { Drawable = new NightArt(), WidthRequest = 72, HeightRequest = 80 };
-    private DateTime Evening => (_date.Date ?? DateTime.Today).Date;
+    private DateTime Evening => _date.SelectedIndex >= 0 && _date.SelectedIndex < _evenings.Length ? _evenings[_date.SelectedIndex] : DateTime.Today;
     private bool CanRecord => _window is { } night ? DateTimeOffset.Now >= night.Isha : Evening < DateTime.Today;
     private static string Clock(DateTimeOffset time) => time.ToLocalTime().ToString("hh:mm tt", CultureInfo.GetCultureInfo("ar-EG"));
     public QiyamPage(LocationService locations, IPrayerService prayers, IAppNavigator navigator, AzkarRepository azkar)
     {
         _locations = locations; _prayers = prayers; _navigator = navigator; _azkar = azkar; Ui.Page(this, "قيام الليل");
-        Ui.ThemeProperty(_date, DatePicker.TextColorProperty, "AppInk"); Ui.ThemeProperty(_status, Label.TextColorProperty, "AppMuted"); Ui.ThemeProperty(_reminderStatus, Label.TextColorProperty, "AppMuted");
+        _date.OwnerPage = _goal.OwnerPage = _lead.OwnerPage = this; Ui.ThemeProperty(_status, Label.TextColorProperty, "AppMuted"); Ui.ThemeProperty(_reminderStatus, Label.TextColorProperty, "AppMuted");
         var hero = new Grid { ColumnDefinitions = { new(72), new(GridLength.Star) }, FlowDirection = FlowDirection.LeftToRight, ColumnSpacing = 12 };
         hero.Add(_art);
         var words = Ui.Stack(Ui.Label("لحظات هادئة تقرّبك", 18, true), Ui.Label("موعد لصلاتك وقرآنك ودعائك", 13)); words.FlowDirection = FlowDirection.RightToLeft; words.VerticalOptions = LayoutOptions.Center; words.Spacing = 3; hero.Add(words, 1);
@@ -64,8 +65,7 @@ public sealed class QiyamPage : ContentPage
         _witr.Toggled += (_, e) => { if (!_sync && CanRecord) { var log = QiyamSettings.Load(Evening); QiyamSettings.Save(Evening, log with { Witr = e.Value }); } };
         var saveGoal = Ui.Button("حفظ الهدف", () =>
         {
-            _goal.Unfocus();
-            if (!int.TryParse(NumberInput.Normalize(_goal.Text ?? ""), out var n) || n is < 2 or > 100 || n % 2 != 0) { _goalText.Text = "اختر عددًا زوجيًا من 2 إلى 100 دون الوتر"; return; }
+            if (_goal.SelectedItem is not int n) { _goalText.Text = "اختر عددًا زوجيًا من 2 إلى 100 دون الوتر"; return; }
             QiyamSettings.Goal = n; var log = QiyamSettings.Load(Evening); QiyamSettings.Save(Evening, log with { Goal = n, Completed = log.Completed && log.Rakaat >= n }); RenderLog();
         }, true); saveGoal.FontSize = 13;
         var goalRow = new Grid { ColumnDefinitions = { new(GridLength.Star), new(GridLength.Auto) }, ColumnSpacing = 8 }; goalRow.Add(_goal); goalRow.Add(saveGoal, 1);
@@ -85,15 +85,15 @@ public sealed class QiyamPage : ContentPage
         }); read.FontSize = 13;
         var body = Ui.Stack(hero, Ui.Label("ليلة تبدأ مغرب هذا اليوم", 13), _date,
             Ui.Card(Ui.Stack(_countdown, timeRow, _status, location)),
-            Ui.Card(Ui.Stack(Ui.Label("وردي الشخصي لليلة", 15, true), _count, _goalText, _progress, counts, witrRow, _done, Ui.Label("هدف شخصي للركعات دون الوتر، وليس عددًا لازمًا. الإتمام يُسجل بتأكيدك. يمكنك اختيار ليلة سابقة لتسجيلها لاحقًا.", 12), goalRow, read)),
-            Ui.Card(Ui.Stack(Row("تذكير قيام الليل", _reminder), _lead, _reminderStatus, test)),
+            Ui.Card(Ui.Stack(Ui.Label("وردي الشخصي لليلة", 15, true), _count, _goalText, _progress, counts, witrRow, _done, Ui.Label("هدف شخصي للركعات دون الوتر، وليس عددًا لازمًا. الإتمام يُسجل بتأكيدك. يمكنك اختيار ليلة سابقة لتسجيلها لاحقًا.", 12), Ui.Label("هدف الركعات دون الوتر",13,true), goalRow, read)),
+            Ui.Card(Ui.Stack(Row("تذكير قيام الليل", _reminder), Ui.Label("موعد التذكير",13,true), _lead, _reminderStatus, test)),
             Ui.Label("أدعية نبوية", 15, true), _duas,
             Ui.Card(Ui.Stack(Ui.Label("وقت القيام ومصدر الحساب", 15, true), Ui.Label("صلاة الليل من بعد العشاء إلى الفجر. ويُحسب الثلث الأخير من المدة بين المغرب والفجر. المواقيت حسب الموقع وطريقة الحساب المختارة في إعدادات الصلاة.", 13),
                 Ui.AsyncButton("وقت صلاة الليل · الأزهر", () => Browser.Default.OpenAsync("https://azhar.eg/fatwacenter/fatwa/ebadat/ArtMID/7985/ArticleID/47277/صلاةُ-الليل"), true),
                 Ui.AsyncButton("حساب الثلث الأخير · دار الإفتاء", () => Browser.Default.OpenAsync("https://www.dar-alifta.org/en/fatwa/details/7920/which-hour-coincides-with-the-last-third-of-the-night-so-as-to-perform-the-night"), true))));
         body.Padding = new Thickness(16, 12, 16, 24); body.Spacing = 7;
         var host = new Grid { ClassId = "choice-host" }; host.Add(new ScrollView { Content = body }); Content = host;
-        _date.DateSelected += (_, _) => { if (!_sync) RefreshWindow(); };
+        _date.SelectedIndexChanged += (_, _) => { if (!_sync) RefreshWindow(); };
     }
     private static Grid Row(string title, View control)
     {
@@ -102,7 +102,7 @@ public sealed class QiyamPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing(); _active = true; _cancel = new(); AppAppearance.Changed += RefreshArt;
-        _sync = true; _date.MaximumDate = DateTime.Today; _date.MinimumDate = DateTime.Today.AddDays(-30); _date.Date = QiyamService.CurrentEvening(_locations.Saved()?.Location); _reminder.IsToggled = QiyamSettings.Enabled; _lead.SelectedIndex = QiyamSettings.LeadIndex; _sync = false;
+        _sync = true; _evenings = Enumerable.Range(0,31).Select(n=>DateTime.Today.AddDays(-n)).ToArray(); _date.ItemsSource = _evenings.Select((d,i)=>i==0 ? "ليلة اليوم" : i==1 ? "ليلة أمس" : d.ToString("dddd، d MMMM",CultureInfo.GetCultureInfo("ar-EG"))).ToArray(); _date.SelectedIndex = Math.Max(0,Array.IndexOf(_evenings,QiyamService.CurrentEvening(_locations.Saved()?.Location).Date)); _reminder.IsToggled = QiyamSettings.Enabled; _lead.SelectedIndex = QiyamSettings.LeadIndex; _sync = false;
         RefreshWindow(); _timer = Dispatcher.CreateTimer(); _timer.Interval = TimeSpan.FromSeconds(1); _timer.Tick += Tick; _timer.Start();
         try
         {
@@ -147,7 +147,7 @@ public sealed class QiyamPage : ContentPage
     }
     private void RenderLog()
     {
-        var log = QiyamSettings.Load(Evening); _recordingAllowed = CanRecord; _count.Text = log.Rakaat.ToString(); _goal.Text = log.Goal.ToString();
+        var log = QiyamSettings.Load(Evening); _recordingAllowed = CanRecord; _count.Text = log.Rakaat.ToString(); _goal.SelectedIndex = Math.Clamp(log.Goal/2-1,0,49);
         _goalText.Text = log.Completed ? "✓ ورد هذه الليلة مكتمل بتأكيدك" : $"هدف الليلة {log.Goal} ركعات دون الوتر" + (!CanRecord ? " · يبدأ التسجيل بعد العشاء" : "");
         _progress.Progress = Math.Min(1, log.Rakaat / (double)log.Goal); _add.IsEnabled = CanRecord; _undo.IsEnabled = CanRecord && log.Rakaat > 0;
         _done.IsEnabled = CanRecord && !log.Completed && log.Rakaat >= log.Goal; _witr.IsEnabled = CanRecord;

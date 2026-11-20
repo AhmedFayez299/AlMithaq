@@ -1,4 +1,4 @@
-﻿using global::Android.App;
+using global::Android.App;
 using global::Android.Content;
 using global::Android.OS;
 using global::AndroidX.Core.App;
@@ -14,7 +14,12 @@ public static class SalawatScheduler
     private static PendingIntent Pending(int slot, Intent intent) => PendingIntent.GetBroadcast(Context, 9500 + slot, intent, AdhanScheduler.PendingFlags)!;
     private static void Schedule(long at, PendingIntent pending)
     {
-        if (AdhanScheduler.CanSchedule) Manager.SetExactAndAllowWhileIdle(AlarmType.RtcWakeup, at, pending);
+        if (AdhanScheduler.CanSchedule)
+        {
+            using var open=new Intent(Context,typeof(MainActivity)); open.PutExtra("open_salawat",true);
+            using var show=PendingIntent.GetActivity(Context,9499,open,AdhanScheduler.PendingFlags)!;
+            using var alarm=new AlarmManager.AlarmClockInfo(at,show); Manager.SetAlarmClock(alarm,pending);
+        }
         else Manager.SetAndAllowWhileIdle(AlarmType.RtcWakeup, at, pending);
     }
     public static void Refresh()
@@ -53,14 +58,18 @@ public sealed class SalawatReceiver : BroadcastReceiver
     {
         if (context is null || intent is null || !SalawatSettings.Enabled || intent.GetStringExtra("generation") != Preferences.Get("salawat.generation", "")) return;
         var at = intent.GetLongExtra("at", 0); var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(); var test = intent.GetBooleanExtra("test", false);
+        var delay=Math.Max(0,now-at);
+        Preferences.Set("salawat.last.scheduled",at);Preferences.Set("salawat.last.received",now);Preferences.Set("salawat.last.delivery-delay",delay);
+        global::Android.Util.Log.Info("AlMithaq.Salawat",$"Alarm delivered: scheduled={at} received={now} deliveryDelayMs={delay} exactPermission={AdhanScheduler.CanSchedule} test={test}");
         var allowed = SalawatSettings.Valid && at > 0 && now >= at && now - at < 15 * 60_000 && (test || LocalReminderPlan.IsWithinWindow(DateTime.Now, SalawatSettings.Start, SalawatSettings.End));
         if (allowed && NotificationManagerCompat.From(context)!.AreNotificationsEnabled())
         {
             SalawatScheduler.Notify(context, test);
             if (SalawatSettings.Sound && SalawatSettings.Volume > 0 && !AdhanPlaybackService.IsPlaying)
             {
-                try { using var service = new Intent(context, typeof(SalawatPlaybackService)); global::AndroidX.Core.Content.ContextCompat.StartForegroundService(context, service); }
-                catch (Exception ex) { Preferences.Set("salawat.error", "اسمح بالتذكيرات الدقيقة لتشغيل الصوت في الخلفية"); global::Android.Util.Log.Error("AlMithaq.Salawat", ex.ToString()); }
+                try { SalawatPlaybackService.HoldStartup(context);
+                    using var service = new Intent(context, typeof(SalawatPlaybackService)); service.PutExtra("at",at); global::AndroidX.Core.Content.ContextCompat.StartForegroundService(context, service); }
+                catch (Exception ex) { SalawatPlaybackService.ReleaseStartup(); Preferences.Set("salawat.error", "اسمح بالتذكيرات الدقيقة لتشغيل الصوت في الخلفية"); global::Android.Util.Log.Error("AlMithaq.Salawat", ex.ToString()); }
             }
         }
         // One future alarm, never a queue of catch-up reminders.

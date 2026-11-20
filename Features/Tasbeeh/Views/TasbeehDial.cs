@@ -8,7 +8,7 @@ public sealed class TasbeehDial : IDrawable
     public void Draw(ICanvas canvas, RectF rect)
     {
         var x = rect.Center.X; var y = rect.Center.Y; var r = Math.Min(rect.Width, rect.Height) / 2 - 8;
-        canvas.FillColor = AppAppearance.IsDark ? Color.FromArgb("#203D34") : Color.FromArgb("#EFF3E8");
+        canvas.FillColor = Application.Current?.Resources["AppSoft"] as Color ?? Ui.Paper;
         canvas.FillCircle(x, y, r);
         canvas.StrokeSize = 1; canvas.StrokeColor = Ui.Gold.WithAlpha(.5f); canvas.DrawCircle(x, y, r - 13);
         var beads = 33; var progress = Value == 0 ? 0 : Value % Math.Max(1, Goal) == 0 ? 1d : Value % Math.Max(1, Goal) / (double)Goal;

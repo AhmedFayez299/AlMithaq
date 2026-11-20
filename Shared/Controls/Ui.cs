@@ -1,4 +1,4 @@
-﻿namespace AlMithaq.Shared.Controls;
+namespace AlMithaq.Shared.Controls;
 
 public static class Ui
 {
@@ -13,14 +13,14 @@ public static class Ui
     }
     public static void RefreshThemeProperties()
     {
-        for (var i = ThemeTargets.Count - 1; i >= 0; i--)
+        foreach (var entry in ThemeTargets.ToArray())
         {
-            var entry = ThemeTargets[i];
-            if (!entry.Target.TryGetTarget(out var target)) { ThemeTargets.RemoveAt(i); continue; }
+            if (!ThemeTargets.Contains(entry)) continue;
+            if (!entry.Target.TryGetTarget(out var target)) { ThemeTargets.Remove(entry); continue; }
             // A local override (hero text, active menu, reader palette) takes precedence.
-            if (!Equals(target.GetValue(entry.Property), entry.Value)) { ThemeTargets.RemoveAt(i); continue; }
+            if (!Equals(target.GetValue(entry.Property), entry.Value)) { ThemeTargets.Remove(entry); continue; }
             if (Application.Current?.Resources.TryGetValue(entry.Key, out var value) != true) continue;
-            target.SetValue(entry.Property, value); ThemeTargets[i] = entry with { Value = value };
+            target.SetValue(entry.Property, value); var index = ThemeTargets.IndexOf(entry); if (index >= 0) ThemeTargets[index] = entry with { Value = value };
         }
     }
     public static readonly Color Green = Color.FromArgb("#176B57");
@@ -40,9 +40,9 @@ public static class Ui
     {
         var button = new Button { Text = text, FontFamily = "Almarai-Regular", FontSize = 14,
             BackgroundColor = secondary ? Color.FromArgb("#E7EDE6") : Green,
-            TextColor = secondary ? Ink : Colors.White, CornerRadius = 14, Padding = new Thickness(14, 10), MinimumHeightRequest = 48 };
+            TextColor = secondary ? Ink : Colors.White, CornerRadius = 16, Padding = new Thickness(16, 11), MinimumHeightRequest = 48 };
         button.Clicked += (_, _) => action();
-        if (secondary) { ThemeProperty(button, Microsoft.Maui.Controls.Button.BackgroundColorProperty, "AppSoft"); ThemeProperty(button, Microsoft.Maui.Controls.Button.TextColorProperty, "AppInk"); }
+        if (secondary) { button.BorderWidth = .6; button.BorderColor = Gold.WithAlpha(.55f); ThemeProperty(button, Microsoft.Maui.Controls.Button.BackgroundColorProperty, "AppSoft"); ThemeProperty(button, Microsoft.Maui.Controls.Button.TextColorProperty, "AppInk"); }
         return button;
     }
     public static Button AsyncButton(string text, Func<Task> action, bool secondary = false)
@@ -55,7 +55,7 @@ public static class Ui
             catch (OperationCanceledException) { }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine(ex);
+                StartupTrace.Failure(ex);
                 if (Application.Current?.Windows.FirstOrDefault()?.Page is { } root) await root.DisplayAlertAsync("تعذر إتمام العملية", "تحقق من الاتصال والأذونات ثم أعد المحاولة.", "حسنًا");
             }
             finally { button.IsEnabled = true; }
@@ -72,7 +72,7 @@ public static class Ui
     {
         var card = new Border {
         Content = content, Padding = 18, Margin = new Thickness(0, 5), BackgroundColor = Colors.White,
-        Stroke = Color.FromArgb("#E4E8DE"), StrokeThickness = 1,
+        Stroke = Color.FromArgb("#E4E8DE"), StrokeThickness = .65,
         StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 20 }
         };
         ThemeProperty(card, Border.BackgroundColorProperty, "AppCard"); ThemeProperty(card, Border.StrokeProperty, "AppStrokeBrush"); return card;
@@ -89,7 +89,7 @@ public static class Ui
 #if IOS
         if (primary) AlMithaq.Platforms.iOS.CircularButton.Attach(button);
 #endif
-        if (!primary) button.BackgroundColor = Colors.Transparent;
+        if (!primary) { button.BackgroundColor = Colors.Transparent; button.BorderWidth = 0; }
         SemanticProperties.SetDescription(button, description);
         ToolTipProperties.SetText(button, description);
         return button;
@@ -124,6 +124,9 @@ public static class Ui
     public static void Page(ContentPage page, string title, bool nativeHeader = true)
     {
         page.Loaded += (_, _) => PageContentZoom.Attach(page);
+#if ANDROID
+        page.SafeAreaEdges = SafeAreaEdges.All;
+#endif
         page.Title = title; page.BackgroundColor = Paper; page.FlowDirection = FlowDirection.RightToLeft;
         ThemeProperty(page, ContentPage.BackgroundColorProperty, "AppPaper");
         if (!nativeHeader) return;

@@ -1,4 +1,4 @@
-﻿#if !IOS
+#if !IOS
 using AlMithaq.Core.Abstractions;
 using AlMithaq.Shared.Controls;
 
@@ -40,6 +40,7 @@ public sealed class AppNavigator(IServiceProvider services) : IAppNavigator, IDi
                 "qibla" => services.GetRequiredService<QiblaPage>(), "tasbeeh" => services.GetRequiredService<TasbeehPage>(),
                 "settings" => services.GetRequiredService<SettingsPage>(), "sources" => services.GetRequiredService<SourcesPage>(), "zakat" => services.GetRequiredService<ZakatPage>(), _ => throw new ArgumentOutOfRangeException(nameof(route))
             };
+            BottomNavigation.Attach(page, this, route);
             StartupTrace.Write("Content page created");
             navigation = new NavigationPage(page) { BarBackgroundColor = Ui.Green, BarTextColor = Colors.White };
             StartupTrace.Write("Navigation page created");

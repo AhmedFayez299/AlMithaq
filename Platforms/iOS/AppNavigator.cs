@@ -37,6 +37,7 @@ public sealed class AppNavigator(IServiceProvider services) : IAppNavigator, IDi
             "settings" => services.GetRequiredService<SettingsPage>(), "sources" => services.GetRequiredService<SourcesPage>(),
             "zakat" => services.GetRequiredService<ZakatPage>(), _ => throw new ArgumentOutOfRangeException(nameof(route))
         };
+        AlMithaq.Shared.Controls.BottomNavigation.Attach(page, this, route);
         _pages.Add(route, page);
         return page;
     }

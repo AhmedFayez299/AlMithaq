@@ -6,6 +6,9 @@ public sealed class PageNumberDropdown : ContentView
     private readonly Button _button;
     private Action? _close;
     private int _page = 1;
+    public ContentPage? OwnerPage { get; set; }
+    public int MinimumPage { get; set; } = 1;
+    public int MaximumPage { get; set; } = 604;
     public event EventHandler? SelectedPageChanged;
     public int SelectedPage
     {
@@ -24,14 +27,13 @@ public sealed class PageNumberDropdown : ContentView
     {
         if (_close is not null) { _close(); return Task.CompletedTask; }
         Element? element = this; while (element is not null && element is not ContentPage) element = element.Parent;
-        if (element is not ContentPage page || page.Content is null) return Task.CompletedTask;
-        Grid host;
-        if (page.Content is Grid grid && grid.ClassId == "choice-host") host = grid;
-        else { var original = page.Content; page.Content = null; host = new Grid { ClassId = "choice-host" }; host.Add(original); page.Content = host; }
+        var page = OwnerPage ?? element as ContentPage;
+        if (page?.Content is null) return Task.CompletedTask;
+        var host = PopupSheet.Host(page);
         var overlay = new AbsoluteLayout { ZIndex = 200, FlowDirection = FlowDirection.LeftToRight, WidthRequest = host.Width, HeightRequest = host.Height };
         var outside = new Button { BackgroundColor = Colors.Transparent, Padding = 0 };
         AbsoluteLayout.SetLayoutBounds(outside, new Rect(0, 0, 1, 1)); AbsoluteLayout.SetLayoutFlags(outside, Microsoft.Maui.Layouts.AbsoluteLayoutFlags.All); overlay.Add(outside);
-        var numbers = new CollectionView { SelectionMode = SelectionMode.None, FlowDirection = FlowDirection.RightToLeft, ItemsSource = Enumerable.Range(1, 604).ToArray() };
+        var numbers = new CollectionView { SelectionMode = SelectionMode.None, FlowDirection = FlowDirection.RightToLeft, ItemsSource = Enumerable.Range(MinimumPage, MaximumPage - MinimumPage + 1).ToArray() };
         bool closed = false;
         void Close()
         {
@@ -41,11 +43,12 @@ public sealed class PageNumberDropdown : ContentView
         }
         void Disappear(object? sender, EventArgs e) => Close();
         void Resize(object? sender, EventArgs e) => Close();
-        if (!PopupSheet.Register(page, Close)) return Task.CompletedTask;
+        if (!PopupSheet.Register(page, Close, allowNested: true)) return Task.CompletedTask;
+        overlay.ZIndex = PopupSheet.Layer(page);
         _close = Close; outside.Clicked += (_, _) => Close();
         numbers.ItemTemplate = new DataTemplate(() =>
         {
-            var button = Ui.Button("", () => { }, true); button.FontSize = 13; button.Padding = 1; button.HeightRequest = button.MinimumHeightRequest = 42;
+            var button = Ui.Button("", () => { }, true); button.FontSize = 13; button.CornerRadius = 12; button.Padding = 1; button.HeightRequest = button.MinimumHeightRequest = 42;
             button.SetBinding(Button.TextProperty, ".");
             button.BindingContextChanged += (_, _) => { if (button.BindingContext is int number) { button.BackgroundColor = number == _page ? Ui.Green : Ui.Paper; button.TextColor = number == _page ? Colors.White : Ui.Ink; } };
             button.Clicked += (_, _) => { if (button.BindingContext is int number) { Close(); SelectedPage = number; } };
@@ -63,7 +66,7 @@ public sealed class PageNumberDropdown : ContentView
         AbsoluteLayout.SetLayoutBounds(menu, new Rect(x, y, width, height)); overlay.Add(menu);
         Grid.SetRowSpan(overlay, Math.Max(1, host.RowDefinitions.Count)); Grid.SetColumnSpan(overlay, Math.Max(1, host.ColumnDefinitions.Count));
         page.Disappearing += Disappear; host.SizeChanged += Resize; host.Add(overlay);
-        Dispatcher.Dispatch(() => { if (!closed) numbers.ScrollTo(_page - 1, position: ScrollToPosition.Start, animate: false); });
+        Dispatcher.Dispatch(() => { if (!closed) numbers.ScrollTo(Math.Max(0, _page - MinimumPage), position: ScrollToPosition.Start, animate: false); });
         return Task.CompletedTask;
     }
     private Rect AnchorBounds(Grid host)

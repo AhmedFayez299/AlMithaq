@@ -3,9 +3,13 @@ namespace AlMithaq.Features.PrayerTimes.Services;
 public static class AdhanSettings
 {
     public static readonly string[] Prayers = ["الفجر", "الظهر", "العصر", "المغرب", "العشاء"];
-    public static readonly string[] Voices = ["علي بن أحمد ملا · الحرم المكي", "أحمد الحداد"];
+    public static readonly string[] Voices = ["اذان الحرم المكي", "اذان الشيخ أحمد الحداد", "اذان الشيخ ناصر القطامي"];
+    // Saved indices 0 and 1 retain their original voices; the new voice is appended.
+    public static string AudioName(int voice) => voice switch { 0 => "adhan_ali_mulla", 2 => "adhan_naser", _ => "adhan_haddad" };
+    public static string AudioExtension(int voice) => voice == 0 ? "mp3" : "m4a";
+    public static string NotificationName(int voice) => voice switch { 0 => "adhan_ali_notice.caf", 2 => "adhan_naser_notice.caf", _ => "adhan_haddad_notice.caf" };
     public static bool Enabled { get => Preferences.Get("adhan.enabled", false); set => Preferences.Set("adhan.enabled", value); }
-    public static int Voice { get => Math.Clamp(Preferences.Get("adhan.voice", 0), 0, Voices.Length - 1); set => Preferences.Set("adhan.voice", Math.Clamp(value, 0, Voices.Length - 1)); }
+    public static int Voice { get => Math.Clamp(Preferences.Get("adhan.voice", 2), 0, Voices.Length - 1); set => Preferences.Set("adhan.voice", Math.Clamp(value, 0, Voices.Length - 1)); }
     public static double Volume { get => Math.Clamp(Preferences.Get("adhan.volume", .85), 0, 1); set => Preferences.Set("adhan.volume", Math.Clamp(value, 0, 1)); }
     public static bool ForPrayer(int index) => Preferences.Get($"adhan.prayer.{index}", true);
     public static void SetPrayer(int index, bool enabled) => Preferences.Set($"adhan.prayer.{index}", enabled);
@@ -66,7 +70,7 @@ public static class AdhanCoordinator
 #if ANDROID
         Platforms.Android.AdhanPlaybackService.PlayPreview();
 #elif IOS
-        Platforms.iOS.ReminderAudio.Play(AdhanSettings.Voice == 0 ? "adhan_ali_mulla" : "adhan_haddad", AdhanSettings.Voice == 0 ? "mp3" : "m4a", AdhanSettings.Volume);
+        Platforms.iOS.ReminderAudio.Play(AdhanSettings.AudioName(AdhanSettings.Voice), AdhanSettings.AudioExtension(AdhanSettings.Voice), AdhanSettings.Volume);
 #endif
     }
     public static void StopPreview()
@@ -108,3 +112,4 @@ public sealed class AdhanNotificationPermission : Permissions.BasePlatformPermis
     public override (string androidPermission, bool isRuntime)[] RequiredPermissions => [("android.permission.POST_NOTIFICATIONS", true)];
 }
 #endif
+
