@@ -23,6 +23,9 @@ public sealed class ChoicePicker : ContentView
         Ui.ThemeProperty(arrow,FontImageSource.ColorProperty,"AppMuted");
         _button.ImageSource = arrow; _button.ContentLayout = new Button.ButtonContentLayout(Button.ButtonContentLayout.ImagePosition.Left,10);
         _button.LineBreakMode = LineBreakMode.TailTruncation;
+#if IOS
+        _button.FlowDirection = FlowDirection.LeftToRight;
+#endif
         SemanticProperties.SetDescription(_button, "فتح قائمة الاختيار");
         Content = _button; MinimumHeightRequest = 48;
     }

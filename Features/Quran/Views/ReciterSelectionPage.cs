@@ -63,7 +63,20 @@ public sealed class ReciterSelectionPage : ContentPage
         _all.EmptyView = Ui.Label("لا يوجد قارئ يطابق البحث", 14);
         var tip = ScreenDesign.Intro("تلاوة تُرافق يومك","اختر القارئ للاستماع، أو ثبّته بالنجمة", "\uf028");
         var layout = new Grid { Padding = new Thickness(12, 8), RowSpacing = 5, RowDefinitions = { new(GridLength.Auto), new(GridLength.Auto), new(GridLength.Auto), new(GridLength.Auto), new(GridLength.Auto), new(GridLength.Star) } };
-        layout.Add(tip); layout.Add(_search, 0, 1); layout.Add(_pinnedTitle, 0, 2); layout.Add(_pinned, 0, 3); layout.Add(_count, 0, 4); layout.Add(_all, 0, 5);
+        layout.Add(tip);
+#if IOS
+        var searchFrame = new Border
+        {
+            Content = _search, Padding = 0,
+            Stroke = new SolidColorBrush(Ui.Gold.WithAlpha(.45f)), StrokeThickness = .6,
+            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 12 }
+        };
+        Ui.ThemeProperty(searchFrame, Border.BackgroundColorProperty, "AppPaper");
+        layout.Add(searchFrame, 0, 1);
+#else
+        layout.Add(_search, 0, 1);
+#endif
+        layout.Add(_pinnedTitle, 0, 2); layout.Add(_pinned, 0, 3); layout.Add(_count, 0, 4); layout.Add(_all, 0, 5);
         Content = layout; _search.TextChanged += (_, _) => Render(); Render();
     }
     private void Render()

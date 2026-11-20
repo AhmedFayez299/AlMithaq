@@ -19,6 +19,9 @@ public sealed class PageNumberDropdown : ContentView
     {
         _button = Ui.AsyncButton("الصفحة 1  ﹀", OpenAsync, true);
         _button.FontSize = 13; _button.HeightRequest = _button.MinimumHeightRequest = 44; _button.Padding = new Thickness(10, 2);
+        #if IOS
+        _button.FlowDirection = FlowDirection.LeftToRight;
+#endif
         Content = _button; MinimumHeightRequest = HeightRequest = 44;
         SemanticProperties.SetDescription(_button, "اختيار رقم صفحة المصحف من القائمة");
         Unloaded += (_, _) => _close?.Invoke();

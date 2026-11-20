@@ -114,7 +114,8 @@
 
 	<ItemGroup>
 		<!-- App Icon -->
-        <MauiIcon Include="Resources\AppIcon\mithaqmark.svg" ForegroundFile="Resources\AppIcon\mithaqforeground.png" Color="#123F34" ForegroundScale="0.52" />
+        <MauiIcon Include="Resources\AppIcon\mithaqmark.svg" ForegroundFile="Resources\AppIcon\mithaqforeground.png" Color="#123F34" ForegroundScale="0.80" Condition="'$(TargetFramework)' != 'net10.0-ios'" />
+        <MauiIcon Include="Resources\AppIcon\mithaqmark.svg" ForegroundFile="Resources\AppIcon\mithaqforeground.png" Color="#123F34" ForegroundScale="1.0" Condition="'$(TargetFramework)' == 'net10.0-ios'" />
 
 		<!-- Splash Screen -->
         <MauiSplashScreen Include="Resources\Splash\mithaqsplash_new.png" Color="#123F34" BaseSize="160,160" />

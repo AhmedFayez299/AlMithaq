@@ -25,7 +25,12 @@ public sealed class LocationService
     }
     public async Task RefreshNameAsync(CancellationToken ct)
     {
-        if (Saved() is not { } saved || saved.Description.Any(IsArabic) || saved.Description.StartsWith("موقع يدوي")) return;
+        if (Saved() is not { } saved || saved.Description.StartsWith("موقع يدوي")) return;
+#if IOS
+        if (saved.Description.Any(IsArabic) && Preferences.Get("location.ios-detail.v1", false)) return;
+#else
+        if (saved.Description.Any(IsArabic)) return;
+#endif
         var description = await CityNameAsync(saved.Location, saved.Description, ct);
         var current = Saved();
         if (current?.Location.Latitude == saved.Location.Latitude && current.Location.Longitude == saved.Location.Longitude)
@@ -61,7 +66,14 @@ public sealed class LocationService
             var places = await geocoder.ReverseGeocodeLocationAsync(coordinate, locale).WaitAsync(TimeSpan.FromSeconds(6), ct);
 #pragma warning restore CA1422
             var place = places.FirstOrDefault();
-            var candidates = new[] { place?.Locality, place?.SubAdministrativeArea, place?.AdministrativeArea };
+            var details = new[] { place?.SubLocality, place?.Locality, place?.SubAdministrativeArea, place?.AdministrativeArea }
+                .Where(value => !string.IsNullOrWhiteSpace(value)).Distinct().ToArray();
+            if (details.Length > 0)
+            {
+                Preferences.Set("location.ios-detail.v1", true);
+                return string.Join("، ", details.Take(2));
+            }
+            var candidates = Array.Empty<string>();
 #else
             var places = await Geocoding.Default.GetPlacemarksAsync(location).WaitAsync(TimeSpan.FromSeconds(6), ct);
             var place = places.FirstOrDefault();

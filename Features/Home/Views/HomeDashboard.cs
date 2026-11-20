@@ -111,6 +111,11 @@ public partial class HomePage : ContentPage
         locate.ImageSource = new FontImageSource { FontFamily = "FontIconSolid", Glyph = "\uf3c5", Size = 14, Color = Color.FromArgb("#DCC38A") };
         locate.ContentLayout = new Button.ButtonContentLayout(Button.ButtonContentLayout.ImagePosition.Right, 5);
         locate.FontSize = 10; locate.MinimumHeightRequest = 28; locate.Padding = 0;
+#if IOS
+        locate.FlowDirection = FlowDirection.LeftToRight;
+        locate.HorizontalOptions = LayoutOptions.End;
+        locate.WidthRequest = 90;
+#endif
         locate.TextColor = Color.FromArgb("#DCC38A"); locate.BackgroundColor = Colors.Transparent; locate.BorderWidth = 0;
         var place = new Grid { ColumnDefinitions = { new(GridLength.Star), new(GridLength.Auto) }, ColumnSpacing = 6 };
         place.Add(_locationName); place.Add(locate, 1);
